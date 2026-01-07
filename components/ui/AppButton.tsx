@@ -5,11 +5,12 @@ import { colors } from '@/constants/theme';
 type Props = {
   title: string;
   onPress: () => void;
+  disabled?: boolean;
 };
 
-export const AppButton = ({ title, onPress }: Props) => {
+export const AppButton = ({ title, onPress, disabled }: Props) => {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
+    <TouchableOpacity style={styles.button} onPress={onPress} disabled={disabled} activeOpacity={disabled ? 1 : 0.7}>
       <Text style={styles.text}>{title}</Text>
     </TouchableOpacity>
   );

@@ -46,7 +46,7 @@ export default function SignUpScreen() {
             </>
           }
         />
-                <AppButton title="Créer mon compte" onPress={() => { }} />
+                <AppButton title="Créer mon compte" onPress={() => router.push('/(onboarding)/genres')} />
                 <AuthFooter
                     question="Déjà inscrit ?"
                     actionText="Se connecter"
