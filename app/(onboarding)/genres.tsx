@@ -53,13 +53,13 @@ export default function GenresScreen() {
             />
 
             <View style={styles.bottom}>
-                <Text style={styles.counter}>
+                <Text style={[styles.counter, selected.length < 3 && styles.counterError]}>
                     {selected.length} genres sélectionnés
                 </Text>
 
                 <AppButton
                     title="Continuer"
-                    onPress={() => router.push('/(onboarding)/manga_prefs')}
+                    onPress={() => router.push('/mangas')}
                     disabled={selected.length < 3}
                 />
             </View>
@@ -95,5 +95,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#6B7280',
         marginBottom: 12,
+    },
+    counterError: {
+        color: '#EF4444',
     },
 });

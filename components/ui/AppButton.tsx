@@ -6,9 +6,10 @@ type Props = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  variant?: 'primary' | 'outline';
 };
 
-export const AppButton = ({ title, onPress, disabled }: Props) => {
+export const AppButton = ({ title, onPress, disabled, variant = 'primary' }: Props) => {
   return (
     <TouchableOpacity style={styles.button} onPress={onPress} disabled={disabled} activeOpacity={disabled ? 1 : 0.7}>
       <Text style={styles.text}>{title}</Text>
