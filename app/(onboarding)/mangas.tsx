@@ -1,14 +1,14 @@
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { MangaCard } from '@/components/onboarding/MangaCard';
 import { MangaSearchBar } from '@/components/onboarding/MangaSearchBar';
-import { SelectedMangaChips } from '@/components/onboarding/SelectedMangaChips';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
+import { SelectedMangaChips } from '@/components/onboarding/SelectedMangaChips';
 import { AppButton } from '@/components/ui/AppButton';
-import { useDebounce } from '../hooks/useDebounce';
-import { useMangaSelection } from '../hooks/useMangaSelection';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useMangaSelection } from '@/hooks/useMangaSelection';
 
 
 export default function MangasScreen() {
@@ -58,13 +58,18 @@ export default function MangasScreen() {
         }
       />
 
+      {!query && (
+        <Text style={styles.sectionLabel}>Populaires</Text>
+      )}
+
       {loading && <ActivityIndicator style={{ marginVertical: 20 }} />}
 
       {!loading && (
         <FlatList
           data={data}
           numColumns={3}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          columnWrapperStyle={styles.gridRow}
+          contentContainerStyle={styles.gridContent}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <MangaCard
@@ -83,8 +88,19 @@ export default function MangasScreen() {
         </Text>
 
         <View style={styles.actions}>
-          <AppButton title="Retour" variant="outline" onPress={router.back} />
-          <AppButton title="Terminer" onPress={() => router.replace('/')} />
+          <AppButton
+            title="Retour"
+            variant="outline"
+            onPress={router.back}
+            style={styles.backButton}
+            textStyle={styles.backButtonText}
+          />
+          <AppButton
+            title="Terminer"
+            onPress={() => router.replace('/')}
+            style={styles.finishButton}
+            textStyle={styles.finishButtonText}
+          />
         </View>
       </View>
     </View>
@@ -113,13 +129,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  section: {
+  sectionLabel: {
     fontSize: 14,
     color: '#9CA3AF',
     marginHorizontal: 24,
     marginBottom: 12,
     marginTop: 8,
     fontWeight: '500',
+  },
+
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+  },
+
+  gridContent: {
+    paddingBottom: 140,
   },
 
   grid: {
@@ -169,39 +194,41 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 16,
   },
 
-  actionButton: {
+  backButton: {
     width: '48%',
     height: 56,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  outlineButton: {
+    marginTop: 0,
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
   },
 
-  primaryButton: {
+  backButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  finishButton: {
+    width: '48%',
+    height: 56,
+    borderRadius: 12,
+    marginTop: 0,
     backgroundColor: '#6366F1',
     shadowColor: '#6366F1',
     shadowOpacity: 0.3,
     shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
 
-  primaryText: {
+  finishButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-  },
-
-  outlineText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

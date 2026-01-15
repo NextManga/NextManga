@@ -1,33 +1,61 @@
 // src/components/ui/AppButton.tsx
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { colors } from '@/constants/theme';
+import { StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 
 type Props = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'outline';
+  style?: ViewStyle;
+  textStyle?: TextStyle;
 };
 
-export const AppButton = ({ title, onPress, disabled, variant = 'primary' }: Props) => {
+export const AppButton = ({ title, onPress, disabled, variant = 'primary', style, textStyle }: Props) => {
+  const buttonStyle = [
+    styles.button,
+    variant === 'outline' && styles.outlineButton,
+    variant === 'primary' && styles.primaryButton,
+    style,
+  ];
+
+  const labelStyle = [
+    styles.text,
+    variant === 'outline' && styles.outlineText,
+    variant === 'primary' && styles.primaryText,
+    textStyle,
+  ];
+
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress} disabled={disabled} activeOpacity={disabled ? 1 : 0.7}>
-      <Text style={styles.text}>{title}</Text>
+    <TouchableOpacity style={buttonStyle} onPress={onPress} disabled={disabled} activeOpacity={disabled ? 1 : 0.7}>
+      <Text style={labelStyle}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.primary,
     height: 48,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 30,
   },
+  primaryButton: {
+    backgroundColor: colors.primary,
+  },
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+  },
   text: {
-    color: colors.white,
     fontWeight: '600',
+  },
+  primaryText: {
+    color: colors.white,
+  },
+  outlineText: {
+    color: '#374151',
   },
 });

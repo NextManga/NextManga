@@ -22,7 +22,7 @@ export default function SignInScreen() {
                     <Text style={styles.forgot}>Mot de passe oublié ?</Text>
                 </TouchableOpacity>
 
-                <AppButton title="Se connecter" onPress={() => { }} />
+                <AppButton title="Se connecter" onPress={() => router.replace('/(tabs)')} />
 
                 <View style={styles.footer}>
                 <AuthFooter
