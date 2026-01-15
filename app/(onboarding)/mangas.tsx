@@ -7,8 +7,8 @@ import { MangaSearchBar } from '@/components/onboarding/MangaSearchBar';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { SelectedMangaChips } from '@/components/onboarding/SelectedMangaChips';
 import { AppButton } from '@/components/ui/AppButton';
-import { useDebounce } from '../hooks/useDebounce';
-import { useMangaSelection } from '../hooks/useMangaSelection';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useMangaSelection } from '@/hooks/useMangaSelection';
 
 
 export default function MangasScreen() {
@@ -58,13 +58,18 @@ export default function MangasScreen() {
         }
       />
 
+      {!query && (
+        <Text style={styles.sectionLabel}>Populaires</Text>
+      )}
+
       {loading && <ActivityIndicator style={{ marginVertical: 20 }} />}
 
       {!loading && (
         <FlatList
           data={data}
           numColumns={3}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          columnWrapperStyle={styles.gridRow}
+          contentContainerStyle={styles.gridContent}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <MangaCard
@@ -124,13 +129,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  section: {
+  sectionLabel: {
     fontSize: 14,
     color: '#9CA3AF',
     marginHorizontal: 24,
     marginBottom: 12,
     marginTop: 8,
     fontWeight: '500',
+  },
+
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+  },
+
+  gridContent: {
+    paddingBottom: 140,
   },
 
   grid: {
