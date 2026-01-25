@@ -5,9 +5,10 @@ type Props = {
   placeholder: string;
   secureTextEntry?: boolean;
   onChangeText?: (text: string) => void;
+  value?: string;
 };
 
-export const AppInput = ({ placeholder, secureTextEntry, onChangeText }: Props) => {
+export const AppInput = ({ placeholder, secureTextEntry, onChangeText, value }: Props) => {
   return (
     <View style={styles.container}>
       <TextInput
@@ -16,7 +17,7 @@ export const AppInput = ({ placeholder, secureTextEntry, onChangeText }: Props) 
         secureTextEntry={secureTextEntry}
         style={styles.input}
         onChangeText={onChangeText}
-        
+        value={value}
       />
     </View>
   );

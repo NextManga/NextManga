@@ -6,11 +6,13 @@ import { GenreCard } from '@/components/onboarding/GenreCard';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { AppButton } from '@/components/ui/AppButton';
 import { GENRES } from '@/constants/genres';
+import { useSignUpForm } from '@/contexts/SignUpContext';
 
 
 
 export default function GenresScreen() {
-    const [selected, setSelected] = useState<string[]>([]);
+    const { formData, updateFormData } = useSignUpForm();
+    const [selected, setSelected] = useState<string[]>(formData.genres);
     const SCREEN_WIDTH = Dimensions.get('window').width;
     const HORIZONTAL_PADDING = 24 * 2;
     const GAP = 12;
@@ -21,6 +23,11 @@ export default function GenresScreen() {
         setSelected((prev) =>
             prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
         );
+    };
+
+    const handleContinue = () => {
+        updateFormData({ genres: selected });
+        router.push('/(onboarding)/mangas');
     };
 
     return (
@@ -59,7 +66,7 @@ export default function GenresScreen() {
 
                 <AppButton
                     title="Continuer"
-                    onPress={() => router.push('/mangas')}
+                    onPress={handleContinue}
                     disabled={selected.length < 3}
                 />
             </View>
