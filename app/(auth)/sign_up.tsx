@@ -7,7 +7,7 @@ import { AppLogo } from "@/components/ui/AppLogo";
 import { colors } from "@/constants/theme";
 import { router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, } from "react-native";
+import { StyleSheet, Text, View, } from "react-native";
 
 export default function SignUpScreen() {
 
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     subtitle: {
-        color: colors.gray,
+        color: colors.textSecondary,
         marginBottom: 25,
     },
     forgot: {

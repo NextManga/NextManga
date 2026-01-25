@@ -1,4 +1,5 @@
-import { ScrollView, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   items: string[];
@@ -28,31 +29,31 @@ export const SelectedMangaChips = ({ items, onRemove }: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    marginVertical: 8,
+    paddingHorizontal: spacing.base,
+    marginVertical: spacing.sm,
   },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6366F1',
-    borderRadius: 16,
-    paddingHorizontal: 12,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.md,
     height: 32,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
 
   text: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 13,
-    fontWeight: '600',
-    marginRight: 6,
+    fontWeight: typography.fontWeight.semiBold,
+    marginRight: spacing.xs,
   },
 
   close: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: typography.fontWeight.bold,
     lineHeight: 14,
   },
 });

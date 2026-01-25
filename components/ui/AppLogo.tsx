@@ -1,6 +1,6 @@
 // src/components/ui/AppLogo.tsx
-import { colors } from '@/constants/theme';
-import { View, Text, StyleSheet } from 'react-native';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
+import { StyleSheet, Text, View } from 'react-native';
 
 export const AppLogo = () => {
   return (
@@ -14,21 +14,21 @@ export const AppLogo = () => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginVertical: 40,
+    marginVertical: spacing.xxxl,
     marginTop: 65,
   },
   icon: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: borderRadius.full,
     borderWidth: 2,
     borderColor: colors.white,
     marginBottom: 10,
   },
   text: {
     color: colors.white,
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: typography.fontSize.xxl,
+    fontWeight: typography.fontWeight.semiBold,
     marginBottom: 50,
   },
 });
