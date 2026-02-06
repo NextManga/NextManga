@@ -58,7 +58,7 @@ export default function MangasScreen() {
 
       console.log('✅ User created:', response);
 
-      if (response && (response.userId || response._id)) {
+      if (response) {
         // Succès - réinitialiser le formulaire et rediriger
         resetForm();
         Alert.alert('Succès', 'Compte créé avec succès !', [
