@@ -1,6 +1,6 @@
 // src/components/auth/AuthFooter.tsx
-import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { colors } from '@/constants/theme';
+import { colors, spacing, typography } from '@/constants/theme';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   question: string;
@@ -24,15 +24,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   text: {
     textAlign: 'center',
-    color: colors.gray,
+    color: colors.textSecondary,
     marginInlineEnd: 5,
   },
   link: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semiBold,
   },
 });

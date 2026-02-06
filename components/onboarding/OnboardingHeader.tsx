@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   step: string;
@@ -29,15 +29,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop:50,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 50,
   },
   step: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
   },
   skip: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semiBold,
   },
 });

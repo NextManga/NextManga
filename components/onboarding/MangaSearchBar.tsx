@@ -1,5 +1,6 @@
-import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   value: string;
@@ -13,13 +14,14 @@ export const MangaSearchBar = ({ value, onChange, onClear }: Props) => {
       <Ionicons name="search" size={18} color="#9CA3AF" />
       <TextInput
         placeholder="Rechercher un manga..."
+        placeholderTextColor={colors.gray400}
         style={styles.input}
         value={value}
         onChangeText={onChange}
       />
       {value.length > 0 && (
         <TouchableOpacity onPress={onClear}>
-          <Ionicons name="close" size={18} color="#9CA3AF" />
+          <Ionicons name="close" size={18} color={colors.gray400} />
         </TouchableOpacity>
       )}
     </View>
@@ -30,15 +32,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 24,
-    paddingHorizontal: 16,
+    backgroundColor: colors.gray100,
+    borderRadius: borderRadius.xxl,
+    paddingHorizontal: spacing.base,
     height: 48,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    marginHorizontal: spacing.base,
+    marginVertical: spacing.sm,
   },
   input: {
     flex: 1,
     marginHorizontal: 8,
+    fontSize: typography.fontSize.base,
+    color: colors.textPrimary,
   },
 });

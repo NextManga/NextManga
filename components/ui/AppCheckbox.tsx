@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
   checked: boolean;
@@ -24,12 +24,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: spacing.lg,
   },
   box: {
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
     borderWidth: 1.5,
     borderColor: colors.primary,
     marginRight: 10,
@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   label: {
-    fontSize: 12,
-    color: colors.gray,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
     flex: 1,
   },
 });

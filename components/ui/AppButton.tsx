@@ -1,5 +1,5 @@
 // src/components/ui/AppButton.tsx
-import { colors } from '@/constants/theme';
+import { borderRadius, colors, dimensions, typography } from '@/constants/theme';
 import { StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 
 type Props = {
@@ -35,8 +35,8 @@ export const AppButton = ({ title, onPress, disabled, variant = 'primary', style
 
 const styles = StyleSheet.create({
   button: {
-    height: 48,
-    borderRadius: 12,
+    height: dimensions.buttonHeight.base,
+    borderRadius: borderRadius.base,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 30,
@@ -47,15 +47,15 @@ const styles = StyleSheet.create({
   outlineButton: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: '#D1D5DB',
+    borderColor: colors.gray300,
   },
   text: {
-    fontWeight: '600',
+    fontWeight: typography.fontWeight.semiBold,
   },
   primaryText: {
     color: colors.white,
   },
   outlineText: {
-    color: '#374151',
+    color: colors.gray700,
   },
 });
