@@ -1,23 +1,36 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { GenreCard } from '@/components/onboarding/GenreCard';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { AppButton } from '@/components/ui/AppButton';
 import { GENRES } from '@/constants/genres';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSignUpForm } from '@/contexts/SignUpContext';
+import { api } from '@/services/api';
 
 
 
 export default function GenresScreen() {
     const { formData, updateFormData } = useSignUpForm();
+    const { userId, token, user, setUser } = useAuth();
+    const isEditingProfile = !!userId && !!token; // Si authentifié, on édite le profil
+    
     const [selected, setSelected] = useState<string[]>(formData.genres);
+    const [isSaving, setIsSaving] = useState(false);
     const SCREEN_WIDTH = Dimensions.get('window').width;
     const HORIZONTAL_PADDING = 24 * 2;
     const GAP = 12;
 
     const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING - GAP) / 2;
+
+    // ✅ Charger les genres depuis le profil si on est authentifié
+    useEffect(() => {
+        if (isEditingProfile && user?.preferences?.genres) {
+            setSelected(user.preferences.genres);
+        }
+    }, [isEditingProfile, user]);
 
     const toggleGenre = (id: string) => {
         setSelected((prev) =>
@@ -25,17 +38,39 @@ export default function GenresScreen() {
         );
     };
 
-    const handleContinue = () => {
-        updateFormData({ genres: selected });
-        router.push('/(onboarding)/mangas');
+    const handleContinue = async () => {
+        if (isEditingProfile) {
+            // ✅ Mode édition profil: sauvegarder sur l'API
+            try {
+                setIsSaving(true);
+                const updatedProfile = await api.updateUserPreferences(
+                    userId,
+                    { genres: selected },
+                    token
+                );
+                setUser(updatedProfile);
+                Alert.alert('Succès', 'Vos préférences ont été mises à jour !', [
+                    { text: 'OK', onPress: () => router.back() }
+                ]);
+            } catch (error) {
+                console.error('Erreur lors de la mise à jour des préférences:', error);
+                Alert.alert('Erreur', 'Impossible de sauvegarder vos préférences.');
+            } finally {
+                setIsSaving(false);
+            }
+        } else {
+            // Mode onboarding: sauvegarder dans le contexte
+            updateFormData({ genres: selected });
+            router.push('/(onboarding)/mangas');
+        }
     };
 
     return (
         <View style={styles.container}>
             <OnboardingHeader
-                step="Étape 1/2"
+                step={isEditingProfile ? "Édition" : "Étape 1/2"}
                 onBack={() => router.back()}
-                onSkip={() => router.replace('/')}
+                onSkip={isEditingProfile ? undefined : () => router.replace('/')}
             />
 
             <Text style={styles.title}>Quels genres aimez-vous ?</Text>
@@ -65,9 +100,9 @@ export default function GenresScreen() {
                 </Text>
 
                 <AppButton
-                    title="Continuer"
+                    title={isSaving ? "Sauvegarde..." : (isEditingProfile ? "Enregistrer" : "Continuer")}
                     onPress={handleContinue}
-                    disabled={selected.length < 3}
+                    disabled={selected.length < 3 || isSaving}
                 />
             </View>
         </View>

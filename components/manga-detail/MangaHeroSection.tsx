@@ -1,11 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
-    Image,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface MangaHeroSectionProps {
   coverImage: string;
@@ -20,6 +21,9 @@ export const MangaHeroSection: React.FC<MangaHeroSectionProps> = ({
   isFavorite,
   onFavoritePress,
 }) => {
+  const insets = useSafeAreaInsets();
+  const topSpacing = Math.max(insets.top + 8, 24);
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -30,7 +34,7 @@ export const MangaHeroSection: React.FC<MangaHeroSectionProps> = ({
       >
         {/* Back Button */}
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { top: topSpacing - 10 }]}
           onPress={onBackPress}
           activeOpacity={0.7}
         >
@@ -41,7 +45,7 @@ export const MangaHeroSection: React.FC<MangaHeroSectionProps> = ({
 
         {/* Favorite Button */}
         <TouchableOpacity
-          style={styles.favoriteButton}
+          style={[styles.favoriteButton, { top: topSpacing -10 }]}
           onPress={onFavoritePress}
           activeOpacity={0.7}
         >
@@ -51,7 +55,7 @@ export const MangaHeroSection: React.FC<MangaHeroSectionProps> = ({
         </TouchableOpacity>
 
         {/* Cover Image */}
-        <View style={styles.coverContainer}>
+        <View style={[styles.coverContainer, { top: topSpacing - 40 }]}>
           <Image
             source={{ uri: coverImage }}
             style={styles.coverImage}
@@ -82,6 +86,7 @@ const styles = StyleSheet.create({
   container: {
     height: 280,
     width: '100%',
+
   },
   gradient: {
     flex: 1,
@@ -91,7 +96,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 16,
     left: 16,
     width: 40,
     height: 40,
@@ -117,7 +121,6 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 16,
     right: 16,
     width: 40,
     height: 40,

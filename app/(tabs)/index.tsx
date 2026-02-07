@@ -125,7 +125,7 @@ export default function HomeScreen() {
       <Header
         userName={user?.displayName || 'User'}
         notificationCount={3}
-        onAvatarPress={() => console.log('Avatar pressed')}
+        onAvatarPress={() => router.push('/profile')}
         onNotificationPress={() => console.log('Notification pressed')}
       />
 

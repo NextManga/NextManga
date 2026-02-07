@@ -308,6 +308,47 @@ export const api = {
     }
   },
 
+  authenticatedPut: async <T = any>(endpoint: string, body: any, token: string): Promise<T> => {
+    try {
+      console.log(`🟡 PUT Request (Auth): ${API_URL}${endpoint}`);
+      console.log('📤 Request Body:', JSON.stringify(body, null, 2));
+
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response Text:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
+        const errorMessage = errorData?.message || errorData?.error || `Erreur API (${res.status})`;
+        console.log('❌ Error Message:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      console.log('✅ Response Success:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ PUT Request Failed:', error);
+      throw error;
+    }
+  },
+
   createUser: async (payload: CreateUserPayload): Promise<UserProfile> => {
     return api.post<UserProfile>('/api/users', payload);
   },
@@ -372,6 +413,23 @@ export const api = {
 
   getUser: async (userId: string, token: string): Promise<UserProfile> => {
     return api.authenticatedGet<UserProfile>(`/api/users/${userId}`, token);
+  },
+
+  updateUserPreferences: async (
+    userId: string,
+    preferences: {
+      themes?: string[];
+      genres?: string[];
+      moods?: string[];
+      targetAudience?: string;
+    },
+    token: string
+  ): Promise<UserProfile> => {
+    return api.authenticatedPut<UserProfile>(
+      `/api/users/${userId}/preferences`,
+      preferences,
+      token
+    );
   },
 
   getHistory: async (userId: string, token: string): Promise<HistoryItem[]> => {
