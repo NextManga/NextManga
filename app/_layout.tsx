@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { SignUpProvider } from '@/contexts/SignUpContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
@@ -32,14 +33,16 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <SignUpProvider>
-            <RootLayoutContent />
-          </SignUpProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <NotificationProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <SignUpProvider>
+              <RootLayoutContent />
+            </SignUpProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </NotificationProvider>
   );
 }

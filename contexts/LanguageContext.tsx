@@ -1,5 +1,6 @@
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
+import { useNotifications } from '@/contexts/NotificationContext';
 import { initI18n, LanguageCode, setI18nLanguage } from '@/i18n';
 
 interface LanguageContextType {
@@ -12,6 +13,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<LanguageCode>('en');
   const [isReady, setIsReady] = useState(false);
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     let isMounted = true;
@@ -32,8 +34,12 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setLanguage = async (nextLanguage: LanguageCode) => {
+    if (nextLanguage === language) {
+      return;
+    }
     setLanguageState(nextLanguage);
     await setI18nLanguage(nextLanguage);
+    await addNotification('language', nextLanguage);
   };
 
   if (!isReady) {

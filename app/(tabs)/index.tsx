@@ -1,7 +1,18 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { ContinueReadingCard } from '@/components/home/ContinueReadingCard';
 import { Header } from '@/components/home/Header';
@@ -10,6 +21,7 @@ import { MangaCardHorizontal } from '@/components/home/MangaCardHorizontal';
 import { SearchBar } from '@/components/home/SearchBar';
 import { SectionHeader } from '@/components/home/SectionHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { api } from '@/services/api';
 
@@ -30,14 +42,41 @@ export default function HomeScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const { t } = useTranslation();
+  const { notifications, clearNotifications } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
   
   const [aiRecommendations, setAiRecommendations] = useState<any[]>(DEFAULT_AI_RECOMMENDATIONS);
   const [trending, setTrending] = useState<any[]>(DEFAULT_TRENDING_MANGAS);
   const [newReleases, setNewReleases] = useState<any[]>(DEFAULT_NEW_RELEASES);
   const [continueReading, setContinueReading] = useState<any[]>([]);
+
+  const notificationCount = notifications.length;
+
+  const notificationItems = useMemo(() => {
+    return notifications.map((item) => {
+      if (item.type === 'theme') {
+        const modeLabel =
+          item.value === 'light'
+            ? t('profile.themeModes.light')
+            : item.value === 'dark'
+              ? t('profile.themeModes.dark')
+              : t('profile.themeModes.auto');
+        return {
+          ...item,
+          message: t('ui.notifications.themeChanged', { mode: modeLabel }),
+        };
+      }
+
+      const languageLabel = t(`languages.${item.value}`, { defaultValue: item.value });
+      return {
+        ...item,
+        message: t('ui.notifications.languageChanged', { language: languageLabel }),
+      };
+    });
+  }, [notifications, t]);
 
   // Charger les données au montage
   useEffect(() => {
@@ -128,9 +167,9 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header
         userName={user?.displayName || t('ui.home.defaultUser')}
-        notificationCount={3}
+        notificationCount={notificationCount}
         onAvatarPress={() => router.push('/profile')}
-        onNotificationPress={() => console.log('Notification pressed')}
+        onNotificationPress={() => setIsNotificationsVisible(true)}
       />
 
       <SearchBar
@@ -269,6 +308,55 @@ export default function HomeScreen() {
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isNotificationsVisible}
+        onRequestClose={() => setIsNotificationsVisible(false)}
+      >
+        <Pressable
+          style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}
+          onPress={() => setIsNotificationsVisible(false)}
+        >
+          <Pressable
+            style={[styles.modalSheet, { backgroundColor: colors.surfacePrimary }]}
+            onPress={() => null}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {t('ui.notifications.title')}
+              </Text>
+              {notificationCount > 0 && (
+                <TouchableOpacity onPress={clearNotifications}>
+                  <Text style={[styles.clearText, { color: colors.primary }]}>
+                    {t('ui.notifications.clear')}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {notificationCount === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                {t('ui.notifications.empty')}
+              </Text>
+            ) : (
+              <FlatList
+                data={notificationItems}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.notificationList}
+                renderItem={({ item }) => (
+                  <View style={[styles.notificationItem, { borderColor: colors.border }]}>
+                    <Text style={[styles.notificationText, { color: colors.textPrimary }]}>
+                      {item.message}
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -291,5 +379,46 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    maxHeight: '70%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  clearText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 14,
+    paddingVertical: 24,
+  },
+  notificationList: {
+    paddingBottom: 20,
+  },
+  notificationItem: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  notificationText: {
+    fontSize: 14,
   },
 });

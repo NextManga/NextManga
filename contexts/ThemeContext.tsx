@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { useColorScheme as useNativeColorScheme } from 'react-native';
 
+import { useNotifications } from '@/contexts/NotificationContext';
+
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
 interface ThemeContextType {
@@ -16,6 +18,7 @@ const THEME_STORAGE_KEY = 'nextmanga_theme_mode';
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const systemColorScheme = useNativeColorScheme();
+  const { addNotification } = useNotifications();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('auto');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,8 +50,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const setThemeMode = async (mode: ThemeMode) => {
     try {
+      if (mode === themeMode) {
+        return;
+      }
       setThemeModeState(mode);
       await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
+      await addNotification('theme', mode);
     } catch (error) {
       console.warn('Erreur lors de la sauvegarde du thème:', error);
     }

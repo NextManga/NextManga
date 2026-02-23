@@ -117,6 +117,13 @@ export const resources = {
         },
       },
       ui: {
+        notifications: {
+          title: 'Notifications',
+          empty: 'No notifications yet',
+          clear: 'Clear all',
+          themeChanged: 'Theme changed to {{mode}}',
+          languageChanged: 'Language changed to {{language}}',
+        },
         section: {
           seeAll: 'See all >',
         },
@@ -345,6 +352,13 @@ export const resources = {
         },
       },
       ui: {
+        notifications: {
+          title: 'Notifications',
+          empty: 'Aucune notification pour le moment',
+          clear: 'Tout effacer',
+          themeChanged: 'Theme modifie en {{mode}}',
+          languageChanged: 'Langue modifiee en {{language}}',
+        },
         section: {
           seeAll: 'Voir tout >',
         },
