@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -12,15 +13,18 @@ export const SearchBar = ({
   value, 
   onChangeText, 
   onFilterPress,
-  placeholder = "Rechercher un manga..." 
+  placeholder
 }: Props) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('ui.search.placeholder');
+
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         placeholderTextColor="#9CA3AF"
         style={styles.input}
       />

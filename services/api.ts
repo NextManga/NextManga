@@ -448,6 +448,78 @@ export const api = {
     return api.authenticatedPost<any>(`/api/users/${userId}/history/${mangaId}`, data, token);
   },
 
+  // Upload avatar
+  uploadAvatar: async (userId: string, imageUri: string, token: string): Promise<UserProfile> => {
+    try {
+      console.log(`🟣 POST Request (Upload Avatar): ${API_URL}/api/users/${userId}/avatar`);
+      
+      // Create FormData
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('avatar', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as any);
+
+      const res = await fetch(`${API_URL}/api/users/${userId}/avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response:', errorText);
+        throw new Error(`Erreur upload avatar (${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log('✅ Avatar uploaded:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ Upload Avatar Failed:', error);
+      throw error;
+    }
+  },
+
+  // Remove avatar
+  removeAvatar: async (userId: string, token: string): Promise<UserProfile> => {
+    try {
+      console.log(`🔴 DELETE Request: ${API_URL}/api/users/${userId}/avatar`);
+
+      const res = await fetch(`${API_URL}/api/users/${userId}/avatar`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response:', errorText);
+        throw new Error(`Erreur suppression avatar (${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log('✅ Avatar removed:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ Remove Avatar Failed:', error);
+      throw error;
+    }
+  },
+
   // ============================================
   // MANGA DETAIL ENDPOINTS
   // ============================================

@@ -1,5 +1,6 @@
 import { colors, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
 };
 
 export const OnboardingHeader = ({ step, onBack, onSkip }: Props) => {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onBack}>
@@ -18,7 +21,7 @@ export const OnboardingHeader = ({ step, onBack, onSkip }: Props) => {
       <Text style={styles.step}>{step}</Text>
 
       <TouchableOpacity onPress={onSkip}>
-        <Text style={styles.skip}>Passer</Text>
+        <Text style={styles.skip}>{t('ui.onboarding.header.skip')}</Text>
       </TouchableOpacity>
     </View>
   );

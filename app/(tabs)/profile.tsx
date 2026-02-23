@@ -1,32 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Image,
-    Modal,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { UserProfile, useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserProfile } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { LanguageCode } from '@/i18n';
 import { api } from '@/services/api';
 
 const HEADER_HEIGHT = 280;
 
-const THEME_OPTIONS = ['Clair', 'Sombre', 'Automatique'];
-const LANGUAGE_OPTIONS = ['Français', 'English', 'Español', '日本語'];
-
-const formatMemberSince = (dateString?: string) => {
+const formatMemberSince = (dateString: string | undefined, locale: string, t: TFunction) => {
   if (!dateString) {
     return null;
   }
@@ -36,22 +42,12 @@ const formatMemberSince = (dateString?: string) => {
     return null;
   }
 
-  const months = [
-    'Janvier',
-    'Fevrier',
-    'Mars',
-    'Avril',
-    'Mai',
-    'Juin',
-    'Juillet',
-    'Aout',
-    'Septembre',
-    'Octobre',
-    'Novembre',
-    'Decembre',
-  ];
+  const formattedDate = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
 
-  return `Membre depuis ${months[date.getMonth()]} ${date.getFullYear()}`;
+  return t('profile.memberSince', { date: formattedDate });
 };
 
 type SettingItem = {
@@ -73,48 +69,50 @@ const SettingRow = ({
   onPress,
   toggleValue,
   onToggle,
+  colors: settingColors,
 }: SettingItem & {
   toggleValue?: boolean;
   onToggle?: (value: boolean) => void;
+  colors: ReturnType<typeof useThemeColors>;
 }) => {
   const content = (
     <View style={styles.settingRowContent}>
-      <View style={styles.settingIcon}>
-        <Ionicons name={icon} size={20} color="#6366F1" />
+      <View style={[styles.settingIcon, { backgroundColor: settingColors.primary + '15' }]}>
+        <Ionicons name={icon} size={20} color={settingColors.primary} />
       </View>
       <View style={styles.settingText}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        <Text style={styles.settingDescription}>{description}</Text>
+        <Text style={[styles.settingTitle, { color: settingColors.textPrimary }]}>{title}</Text>
+        <Text style={[styles.settingDescription, { color: settingColors.textSecondary }]}>{description}</Text>
       </View>
       <View style={styles.settingAction}>
         {type === 'toggle' && (
           <Switch
             value={toggleValue}
             onValueChange={onToggle}
-            trackColor={{ false: '#E5E7EB', true: '#6366F1' }}
+            trackColor={{ false: settingColors.gray200, true: settingColors.primary }}
             thumbColor="#FFFFFF"
           />
         )}
         {type === 'value' && (
           <View style={styles.settingValueWrapper}>
-            <Text style={styles.settingValue}>{value}</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+            <Text style={[styles.settingValue, { color: settingColors.primary }]}>{value}</Text>
+            <Ionicons name="chevron-forward" size={18} color={settingColors.textTertiary} />
           </View>
         )}
-        {type === 'link' && <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />}
+        {type === 'link' && <Ionicons name="chevron-forward" size={18} color={settingColors.textTertiary} />}
       </View>
     </View>
   );
 
   if (type === 'toggle') {
-    return <View style={styles.settingRow}>{content}</View>;
+    return <View style={[styles.settingRow, { borderBottomColor: settingColors.border }]}>{content}</View>;
   }
 
   return (
     <Pressable
-      android_ripple={{ color: 'rgba(99, 102, 241, 0.08)' }}
+      android_ripple={{ color: settingColors.primary + '15' }}
       onPress={onPress}
-      style={styles.settingRow}
+      style={[styles.settingRow, { borderBottomColor: settingColors.border }]}
     >
       {content}
     </Pressable>
@@ -123,12 +121,14 @@ const SettingRow = ({
 
 export default function ProfileScreen() {
   const { user, userId, token, logout, setUser } = useAuth();
+  const { language, setLanguage } = useLanguage();
+  const { themeMode, setThemeMode } = useTheme();
+  const colors = useThemeColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t, i18n } = useTranslation();
   // ⚠️ Préférences UI (theme/language/notifications) stockées localement - pas encore disponibles sur l'API backend
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [selectedTheme, setSelectedTheme] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('');
   const [isPhotoModalVisible, setIsPhotoModalVisible] = useState(false);
   const [isThemeModalVisible, setIsThemeModalVisible] = useState(false);
   const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
 
   const displayName = profile?.displayName || user?.displayName || '';
   const email = profile?.email || user?.email || '';
-  const memberSince = formatMemberSince(profile?.createdAt || user?.createdAt);
+  const memberSince = formatMemberSince(profile?.createdAt || user?.createdAt, i18n.language, t);
   // ✅ Genres chargés depuis l'API (preferences.genres)
   const genreTags = profile?.preferences?.genres ?? [];
   const initials = useMemo(() => {
@@ -155,82 +155,98 @@ export default function ProfileScreen() {
 
   const headerHeight = HEADER_HEIGHT + insets.top;
 
+  const languageOptions = useMemo(
+    () => [
+      { code: 'fr' as LanguageCode, label: t('languages.fr') },
+      { code: 'en' as LanguageCode, label: t('languages.en') },
+    ],
+    [i18n.language]
+  );
+
+  const selectedLanguageLabel =
+    languageOptions.find((option) => option.code === language)?.label ?? '—';
+
   const preferences: SettingItem[] = [
     {
       id: 'theme',
-      title: 'Thème',
-      description: "Apparence de l'application",
+      title: t('profile.settings.theme'),
+      description: t('profile.settings.themeDescription'),
       icon: 'moon',
       type: 'value',
-      value: selectedTheme || '—',
+      value:
+        themeMode === 'auto'
+          ? t('profile.themeModes.auto')
+          : themeMode === 'light'
+            ? t('profile.themeModes.light')
+            : t('profile.themeModes.dark'),
       onPress: () => setIsThemeModalVisible(true),
     },
     {
       id: 'language',
-      title: 'Langue',
-      description: 'Language / 言語',
+      title: t('profile.settings.language'),
+      description: t('profile.settings.languageDescription'),
       icon: 'globe-outline',
       type: 'value',
-      value: selectedLanguage || '—',
+      value: selectedLanguageLabel,
       onPress: () => setIsLanguageModalVisible(true),
     },
     {
       id: 'notifications',
-      title: 'Notifications',
-      description: 'Alertes et rappels',
+      title: t('profile.settings.notifications'),
+      description: t('profile.settings.notificationsDescription'),
       icon: 'notifications-outline',
       type: 'toggle',
     },
     {
       id: 'privacy',
-      title: 'Confidentialité',
-      description: 'Sécurité et données',
+      title: t('profile.settings.privacy'),
+      description: t('profile.settings.privacyDescription'),
       icon: 'lock-closed-outline',
       type: 'link',
-      onPress: () => Alert.alert('Confidentialité', 'Bientôt disponible.'),
+      onPress: () => Alert.alert(t('profile.alerts.privacyTitle'), t('profile.alerts.privacyMessage')),
     },
   ];
 
   const supportItems: SettingItem[] = [
     {
       id: 'about',
-      title: 'À propos de NextManga',
-      description: 'Version et informations',
+      title: t('profile.support.aboutTitle'),
+      description: t('profile.support.aboutDescription'),
       icon: 'information-circle-outline',
       type: 'link',
-      onPress: () => Alert.alert('À propos', 'Version 1.0.0'),
+      onPress: () => Alert.alert(t('profile.alerts.aboutTitle'), t('profile.alerts.aboutMessage')),
     },
     {
       id: 'contact',
-      title: 'Contactez-nous',
-      description: 'Support et assistance',
+      title: t('profile.support.contactTitle'),
+      description: t('profile.support.contactDescription'),
       icon: 'mail-outline',
       type: 'link',
-      onPress: () => Alert.alert('Contact', 'support@nextmanga.app'),
+      onPress: () => Alert.alert(t('profile.alerts.contactTitle'), t('profile.alerts.contactMessage')),
     },
     {
       id: 'terms',
-      title: "Conditions d'utilisation",
-      description: 'CGU et mentions légales',
+      title: t('profile.support.termsTitle'),
+      description: t('profile.support.termsDescription'),
       icon: 'document-text-outline',
       type: 'link',
-      onPress: () => Alert.alert('CGU', 'Bientôt disponible.'),
+      onPress: () => Alert.alert(t('profile.alerts.termsTitle'), t('profile.alerts.termsMessage')),
     },
     {
       id: 'privacyPolicy',
-      title: 'Politique de confidentialité',
-      description: 'Protection de vos données',
+      title: t('profile.support.privacyTitle'),
+      description: t('profile.support.privacyDescription'),
       icon: 'shield-checkmark-outline',
       type: 'link',
-      onPress: () => Alert.alert('Politique', 'Bientôt disponible.'),
+      onPress: () => Alert.alert(t('profile.alerts.policyTitle'), t('profile.alerts.policyMessage')),
     },
     {
       id: 'rate',
-      title: "Évaluer l'application",
-      description: 'Donnez votre avis',
+      title: t('profile.support.rateTitle'),
+      description: t('profile.support.rateDescription'),
       icon: 'star-outline',
       type: 'link',
-      onPress: () => Alert.alert('Merci', 'On compte sur vous !'),
+      onPress: () => Alert.alert(t('profile.alerts.rateTitle'), t('profile.alerts.rateMessage')),
     },
   ];
 
@@ -244,6 +260,13 @@ export default function ProfileScreen() {
       setIsLoading(true);
       setHasError(false);
       const data = await api.getUser(userId, token);
+      
+      // Charger l'avatar local s'il existe
+      const localAvatarUri = await AsyncStorage.getItem(`avatar_${userId}`);
+      if (localAvatarUri) {
+        data.avatarUrl = localAvatarUri;
+      }
+      
       setProfile(data);
       setUser(data);
     } catch (error) {
@@ -264,10 +287,10 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Se déconnecter ?', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
+    Alert.alert(t('profile.alerts.logoutTitle'), t('profile.alerts.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Se déconnecter',
+        text: t('profile.actions.logout'),
         style: 'destructive',
         onPress: () => {
           logout();
@@ -279,11 +302,11 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      '⚠️ Supprimer le compte ?\n',
-      'Cette action est IRRÉVERSIBLE. Toutes vos données seront supprimées.',
+      t('profile.alerts.deleteAccountTitle'),
+      t('profile.alerts.deleteAccountMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive' },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive' },
       ]
     );
   };
@@ -293,23 +316,151 @@ export default function ProfileScreen() {
     await Haptics.selectionAsync();
   };
 
+  const handleTakePhoto = async () => {
+    try {
+      // Demander la permission d'accès à la caméra
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          t('profile.alerts.cameraPermissionTitle'),
+          t('profile.alerts.cameraPermissionMessage')
+        );
+        return;
+      }
+
+      // Ouvrir la caméra
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await processImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la prise de photo:', error);
+      Alert.alert(t('profile.alerts.takePhotoErrorTitle'), t('profile.alerts.takePhotoErrorMessage'));
+    } finally {
+      setIsPhotoModalVisible(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      // Demander la permission d'accès à la galerie
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          t('profile.alerts.galleryPermissionTitle'),
+          t('profile.alerts.galleryPermissionMessage')
+        );
+        return;
+      }
+
+      // Ouvrir la galerie
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        legacy: true, // Force l'ancien sélecteur pour compatibilité Android
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await processImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sélection d\'image:', error);
+      Alert.alert(t('profile.alerts.pickPhotoErrorTitle'), t('profile.alerts.pickPhotoErrorMessage'));
+    } finally {
+      setIsPhotoModalVisible(false);
+    }
+  };
+
+  const processImage = async (imageUri: string) => {
+    try {
+      // Recadrer et redimensionner l'image
+      const manipResult = await manipulateAsync(
+        imageUri,
+        [
+          { resize: { width: 400, height: 400 } }, // Redimensionner à 400x400
+        ],
+        { compress: 0.8, format: SaveFormat.JPEG }
+      );
+
+      // Sauvegarder l'avatar dans AsyncStorage pour persistence
+      if (userId) {
+        await AsyncStorage.setItem(`avatar_${userId}`, manipResult.uri);
+      }
+
+      // Mise à jour locale
+      if (profile) {
+        const updatedProfile = { ...profile, avatarUrl: manipResult.uri };
+        setProfile(updatedProfile);
+        setUser(updatedProfile);
+      }
+      
+      Alert.alert(t('profile.alerts.updatePhotoSuccessTitle'), t('profile.alerts.updatePhotoSuccessMessage'));
+    } catch (error) {
+      console.error('Erreur lors du traitement de l\'image:', error);
+      Alert.alert(t('profile.alerts.pickPhotoErrorTitle'), t('profile.alerts.pickPhotoErrorMessage'));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    Alert.alert(
+      t('profile.alerts.removePhotoTitle'),
+      t('profile.alerts.removePhotoMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Supprimer l'avatar de AsyncStorage
+              if (userId) {
+                await AsyncStorage.removeItem(`avatar_${userId}`);
+              }
+              
+              // Suppression locale
+              if (profile) {
+                const updatedProfile = { ...profile, avatarUrl: undefined };
+                setProfile(updatedProfile);
+                setUser(updatedProfile);
+              }
+              
+              setIsPhotoModalVisible(false);
+              Alert.alert(t('profile.alerts.removePhotoSuccessTitle'), t('profile.alerts.removePhotoSuccessMessage'));
+            } catch (error) {
+              console.error('Erreur lors de la suppression:', error);
+              Alert.alert(t('profile.alerts.removePhotoErrorTitle'), t('profile.alerts.removePhotoErrorMessage'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         <LinearGradient
-          colors={['#6366F1', '#4F46E5']}
+          colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.header, { height: headerHeight, paddingTop: insets.top }]}
         >
           <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => Alert.alert('Réglages', 'Page des réglages à venir.')}
+            style={[styles.settingsButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+            onPress={() => Alert.alert(t('profile.alerts.settingsTitle'), t('profile.alerts.settingsMessage'))}
             activeOpacity={0.7}
           >
             <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
@@ -321,14 +472,14 @@ export default function ProfileScreen() {
               onPress={() => setIsPhotoModalVisible(true)}
               activeOpacity={0.8}
             >
-              <View style={styles.avatarCircle}>
+              <View style={[styles.avatarCircle, { borderColor: '#FFFFFF' }]}>
                 {profile?.avatarUrl ? (
                   <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
                 ) : (
                   <Text style={styles.avatarInitials}>{initials}</Text>
                 )}
               </View>
-              <View style={styles.avatarCamera}
+              <View style={[styles.avatarCamera, { backgroundColor: colors.primary }]}
               >
                 <Ionicons name="camera" size={16} color="#FFFFFF" />
               </View>
@@ -340,38 +491,44 @@ export default function ProfileScreen() {
         </LinearGradient>
 
         {hasError && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>Impossible de charger le profil</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-              <Text style={styles.retryText}>Réessayer</Text>
+          <View style={[styles.errorBanner, { backgroundColor: colors.error + '15' }]}>
+            <Text style={[styles.errorText, { color: colors.error }]}>{t('profile.errors.loadProfile')}</Text>
+            <TouchableOpacity 
+              style={[styles.retryButton, { backgroundColor: colors.error + '25' }]} 
+              onPress={handleRefresh}
+            >
+              <Text style={[styles.retryText, { color: colors.error }]}>{t('common.retry')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <View style={[styles.skeletonBlock, styles.skeletonAvatar]} />
-            <View style={[styles.skeletonBlock, styles.skeletonLine]} />
-            <View style={[styles.skeletonBlock, styles.skeletonLineSmall]} />
-            <View style={[styles.skeletonBlock, styles.skeletonRow]} />
-            <View style={[styles.skeletonBlock, styles.skeletonRow]} />
+            <View style={[styles.skeletonBlock, styles.skeletonAvatar, { backgroundColor: colors.gray200 }]} />
+            <View style={[styles.skeletonBlock, styles.skeletonLine, { backgroundColor: colors.gray200 }]} />
+            <View style={[styles.skeletonBlock, styles.skeletonLineSmall, { backgroundColor: colors.gray200 }]} />
+            <View style={[styles.skeletonBlock, styles.skeletonRow, { backgroundColor: colors.gray200 }]} />
+            <View style={[styles.skeletonBlock, styles.skeletonRow, { backgroundColor: colors.gray200 }]} />
           </View>
         ) : (
           <View style={styles.contentWrapper}>
-            <Text style={styles.sectionTitle}>Préférences</Text>
-            <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('profile.sections.preferences')}</Text>
+            <View style={[styles.sectionCard, { backgroundColor: colors.surfacePrimary, shadowColor: colors.textPrimary }]}>
               {preferences.map((item) => (
                 <SettingRow
                   key={item.id}
                   {...item}
+                  colors={colors}
                   toggleValue={item.id === 'notifications' ? notificationsEnabled : undefined}
                   onToggle={item.id === 'notifications' ? handleNotificationToggle : undefined}
                 />
               ))}
             </View>
 
-            <Text style={[styles.sectionTitle, styles.sectionSpacing]}>Mes genres préférés</Text>
-            <Text style={styles.sectionSubtitle}>Utilisés pour vos recommandations</Text>
+            <Text style={[styles.sectionTitle, styles.sectionSpacing, { color: colors.textPrimary }]}>
+              {t('profile.sections.favoriteGenres')}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{t('profile.genres.subtitle')}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -381,7 +538,7 @@ export default function ProfileScreen() {
                 genreTags.map((tag) => (
                   <TouchableOpacity key={tag} activeOpacity={0.8}>
                     <LinearGradient
-                      colors={['#6366F1', '#818CF8']}
+                      colors={[colors.primary, colors.primaryLight]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.genreTag}
@@ -392,7 +549,7 @@ export default function ProfileScreen() {
                 ))
               ) : (
                 <View style={styles.genreEmptyWrapper}>
-                  <Text style={styles.genreEmptyText}>Aucun genre selectionne</Text>
+                  <Text style={[styles.genreEmptyText, { color: colors.textTertiary }]}>{t('profile.genres.empty')}</Text>
                 </View>
               )}
             </ScrollView>
@@ -400,23 +557,30 @@ export default function ProfileScreen() {
               style={styles.editPreferences}
               onPress={() => router.push('/(onboarding)/genres')}
             >
-              <Text style={styles.editPreferencesText}>✏️ Modifier mes préférences</Text>
+              <Text style={[styles.editPreferencesText, { color: colors.primary }]}>✏️ {t('profile.genres.edit')}</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.sectionTitle, styles.sectionSpacing]}>Support & Informations</Text>
-            <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, styles.sectionSpacing, { color: colors.textPrimary }]}>
+              {t('profile.sections.supportInfo')}
+            </Text>
+            <View style={[styles.sectionCard, { backgroundColor: colors.surfacePrimary, shadowColor: colors.textPrimary }]}>
               {supportItems.map((item) => (
-                <SettingRow key={item.id} {...item} />
+                <SettingRow key={item.id} {...item} colors={colors} />
               ))}
             </View>
 
             <View style={styles.bottomSection}>
-              <Text style={styles.versionText}>Version 1.0.0</Text>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
+              <Text style={[styles.versionText, { color: colors.textTertiary }]}>
+                {t('common.version')} 1.0.0
+              </Text>
+              <TouchableOpacity 
+                style={[styles.logoutButton, { borderColor: colors.error, backgroundColor: colors.surfacePrimary }]}
+                onPress={handleLogout}
+              >
+                <Text style={[styles.logoutText, { color: colors.error }]}>🚪 {t('profile.actions.logout')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleDeleteAccount}>
-                <Text style={styles.deleteAccountText}>Supprimer mon compte</Text>
+                <Text style={[styles.deleteAccountText, { color: colors.textTertiary }]}>{t('profile.actions.deleteAccount')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -429,20 +593,22 @@ export default function ProfileScreen() {
         visible={isPhotoModalVisible}
         onRequestClose={() => setIsPhotoModalVisible(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setIsPhotoModalVisible(false)}>
-          <Pressable style={styles.bottomSheet} onPress={() => null}>
-            <Text style={styles.sheetTitle}>Photo de profil</Text>
-            <TouchableOpacity style={styles.sheetItem}>
-              <Text style={styles.sheetItemText}>📷 Prendre une photo</Text>
+        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setIsPhotoModalVisible(false)}>
+          <Pressable style={[styles.bottomSheet, { backgroundColor: colors.surfacePrimary }]} onPress={() => null}>
+            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>{t('profile.photo.title')}</Text>
+            <TouchableOpacity style={styles.sheetItem} onPress={handleTakePhoto}>
+              <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>📷 {t('profile.photo.take')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetItem}>
-              <Text style={styles.sheetItemText}>🖼️ Choisir depuis galerie</Text>
+            <TouchableOpacity style={styles.sheetItem} onPress={handlePickImage}>
+              <Text style={[styles.sheetItemText, { color: colors.textPrimary }]}>🖼️ {t('profile.photo.choose')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetItem}>
-              <Text style={styles.sheetItemText}>🗑️ Supprimer la photo</Text>
-            </TouchableOpacity>
+            {profile?.avatarUrl && (
+              <TouchableOpacity style={styles.sheetItem} onPress={handleRemovePhoto}>
+                <Text style={[styles.sheetItemText, { color: colors.error }]}>🗑️ {t('profile.photo.remove')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.sheetItem} onPress={() => setIsPhotoModalVisible(false)}>
-              <Text style={styles.sheetItemText}>❌ Annuler</Text>
+              <Text style={[styles.sheetItemText, { color: colors.textSecondary }]}>❌ {t('profile.photo.cancel')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -454,28 +620,47 @@ export default function ProfileScreen() {
         visible={isThemeModalVisible}
         onRequestClose={() => setIsThemeModalVisible(false)}
       >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.centeredModal}>
-            <Text style={styles.modalTitle}>Apparence</Text>
-            {THEME_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={styles.radioRow}
-                onPress={() => setSelectedTheme(option)}
-              >
-                <Ionicons
-                  name={selectedTheme === option ? 'radio-button-on' : 'radio-button-off'}
-                  size={20}
-                  color="#6366F1"
-                />
-                <Text style={styles.radioLabel}>{option}</Text>
-              </TouchableOpacity>
-            ))}
+        <View style={[styles.centeredModalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.centeredModal, { backgroundColor: colors.surfacePrimary }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('profile.modals.appearanceTitle')}</Text>
             <TouchableOpacity
-              style={styles.applyButton}
+              style={styles.themeOption}
+              onPress={async () => await setThemeMode('light')}
+            >
+              <Ionicons
+                name={themeMode === 'light' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={[styles.radioLabel, { color: colors.textPrimary }]}>{t('profile.themeModes.light')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.themeOption}
+              onPress={async () => await setThemeMode('dark')}
+            >
+              <Ionicons
+                name={themeMode === 'dark' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={[styles.radioLabel, { color: colors.textPrimary }]}>{t('profile.themeModes.dark')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.themeOption}
+              onPress={async () => await setThemeMode('auto')}
+            >
+              <Ionicons
+                name={themeMode === 'auto' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={[styles.radioLabel, { color: colors.textPrimary }]}>{t('profile.themeModes.auto')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.applyButton, { backgroundColor: colors.primary }]}
               onPress={() => setIsThemeModalVisible(false)}
             >
-              <Text style={styles.applyButtonText}>Appliquer</Text>
+              <Text style={styles.applyButtonText}>{t('common.apply')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -487,28 +672,28 @@ export default function ProfileScreen() {
         visible={isLanguageModalVisible}
         onRequestClose={() => setIsLanguageModalVisible(false)}
       >
-        <View style={styles.centeredModalOverlay}>
-          <View style={styles.centeredModal}>
-            <Text style={styles.modalTitle}>Choisir une langue</Text>
-            {LANGUAGE_OPTIONS.map((option) => (
+        <View style={[styles.centeredModalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.centeredModal, { backgroundColor: colors.surfacePrimary }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('profile.modals.languageTitle')}</Text>
+            {languageOptions.map((option) => (
               <TouchableOpacity
-                key={option}
+                key={option.code}
                 style={styles.radioRow}
-                onPress={() => setSelectedLanguage(option)}
+                onPress={() => setLanguage(option.code)}
               >
                 <Ionicons
-                  name={selectedLanguage === option ? 'radio-button-on' : 'radio-button-off'}
+                  name={language === option.code ? 'radio-button-on' : 'radio-button-off'}
                   size={20}
-                  color="#6366F1"
+                  color={colors.primary}
                 />
-                <Text style={styles.radioLabel}>{option}</Text>
+                <Text style={[styles.radioLabel, { color: colors.textPrimary }]}>{option.label}</Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity
-              style={styles.applyButton}
+              style={[styles.applyButton, { backgroundColor: colors.primary }]}
               onPress={() => setIsLanguageModalVisible(false)}
             >
-              <Text style={styles.applyButtonText}>Appliquer</Text>
+              <Text style={styles.applyButtonText}>{t('common.apply')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -520,11 +705,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingBottom: 100,
@@ -675,7 +858,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -763,10 +945,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -774,7 +954,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logoutText: {
-    color: '#EF4444',
     fontSize: 17,
     fontWeight: '700',
   },
@@ -790,7 +969,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bottomSheet: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -798,7 +976,6 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 12,
   },
   sheetItem: {
@@ -807,17 +984,14 @@ const styles = StyleSheet.create({
   },
   sheetItemText: {
     fontSize: 16,
-    color: '#1F2937',
   },
   centeredModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   centeredModal: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
     width: '100%',
@@ -825,22 +999,28 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 16,
   },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    columnGap: 12,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     columnGap: 12,
   },
   radioLabel: {
     fontSize: 16,
-    color: '#1F2937',
+    fontWeight: '500',
   },
   applyButton: {
     marginTop: 16,
-    backgroundColor: '#6366F1',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',

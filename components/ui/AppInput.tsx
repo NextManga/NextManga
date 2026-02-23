@@ -1,5 +1,6 @@
 // src/components/ui/AppInput.tsx
-import { borderRadius, colors, dimensions, typography } from '@/constants/theme';
+import { borderRadius, dimensions, typography } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { StyleSheet, TextInput, View } from 'react-native';
 type Props = {
   placeholder: string;
@@ -9,13 +10,15 @@ type Props = {
 };
 
 export const AppInput = ({ placeholder, secureTextEntry, onChangeText, value }: Props) => {
+  const colors = useThemeColors();
+  
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surfaceSecondary, borderColor: colors.primary }]}>
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor={colors.backgroundAppI}
+        placeholderTextColor={colors.textTertiary}
         secureTextEntry={secureTextEntry}
-        style={styles.input}
+        style={[styles.input, { color: colors.textPrimary }]}
         onChangeText={onChangeText}
         value={value}
       />
@@ -25,12 +28,10 @@ export const AppInput = ({ placeholder, secureTextEntry, onChangeText, value }: 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     borderRadius: borderRadius.base,
     marginBottom: 15,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: colors.primary,
   },
   input: {
     height: dimensions.inputHeight.base,

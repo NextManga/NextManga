@@ -1,10 +1,13 @@
-import { View, StyleSheet } from 'react-native';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { StyleSheet, View } from 'react-native';
 
 type Props = {
   level: number; // 0 → 3
 };
 
 export const PasswordStrength = ({ level }: Props) => {
+  const colors = useThemeColors();
+  
   return (
     <View style={styles.container}>
       {[0, 1, 2].map((i) => (
@@ -12,10 +15,12 @@ export const PasswordStrength = ({ level }: Props) => {
           key={i}
           style={[
             styles.bar,
-            level > i && styles.active,
-            level === 1 && i === 0 && styles.weak,
-            level === 2 && i < 2 && styles.medium,
-            level === 3 && styles.strong,
+            { backgroundColor: level > i ? (
+              level === 1 && i === 0 ? colors.error :
+              level === 2 && i < 2 ? colors.warning :
+              level === 3 ? colors.success :
+              colors.gray200
+            ) : colors.gray200 },
           ]}
         />
       ))}
@@ -32,11 +37,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 4,
-    backgroundColor: '#E5E7EB',
     marginRight: 6,
   },
-  active: {},
-  weak: { backgroundColor: '#EF4444' },
-  medium: { backgroundColor: '#F59E0B' },
-  strong: { backgroundColor: '#22C55E' },
 });

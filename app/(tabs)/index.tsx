@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ContinueReadingCard } from '@/components/home/ContinueReadingCard';
@@ -9,6 +10,7 @@ import { MangaCardHorizontal } from '@/components/home/MangaCardHorizontal';
 import { SearchBar } from '@/components/home/SearchBar';
 import { SectionHeader } from '@/components/home/SectionHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { api } from '@/services/api';
 
 // Mock data - pour featured manga
@@ -25,7 +27,9 @@ const DEFAULT_NEW_RELEASES: any[] = [];
 
 export default function HomeScreen() {
   const { user, userId, token } = useAuth();
+  const colors = useThemeColors();
   const router = useRouter();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,9 +125,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Header
-        userName={user?.displayName || 'User'}
+        userName={user?.displayName || t('ui.home.defaultUser')}
         notificationCount={3}
         onAvatarPress={() => router.push('/profile')}
         onNotificationPress={() => console.log('Notification pressed')}
@@ -132,16 +136,17 @@ export default function HomeScreen() {
       <SearchBar
         value={searchQuery}
         onChangeText={setSearchQuery}
+        placeholder={t('ui.search.placeholder')}
         onFilterPress={() => console.log('Filter pressed')}
       />
 
       {isLoading && continueReading.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <ScrollView
-          style={styles.scrollView}
+          style={[styles.scrollView, { backgroundColor: colors.background }]}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -159,7 +164,7 @@ export default function HomeScreen() {
 
           {/* AI Recommendations Section */}
           <SectionHeader
-            title="Recommandations IA ✨"
+            title={t('ui.home.sections.aiRecommendations')}
             onSeeAllPress={() => console.log('See all AI')}
           />
           <FlatList
@@ -183,7 +188,7 @@ export default function HomeScreen() {
 
           {/* Trending Section */}
           <SectionHeader
-            title="Tendances 🔥"
+            title={t('ui.home.sections.trending')}
             onSeeAllPress={() => console.log('See all trending')}
           />
           <FlatList
@@ -208,7 +213,7 @@ export default function HomeScreen() {
 
           {/* New Releases Section */}
           <SectionHeader
-            title="Nouveautés"
+            title={t('ui.home.sections.newReleases')}
             onSeeAllPress={() => console.log('See all new')}
           />
           <FlatList
@@ -223,7 +228,7 @@ export default function HomeScreen() {
                 title={item.title}
                 cover={item.cover}
                 rating={item.rating}
-                badge="NOUVEAU"
+                badge={t('ui.home.badgeNew')}
                 badgeColor="#06B6D4"
                 onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.id } })}
                 onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
@@ -236,7 +241,7 @@ export default function HomeScreen() {
           {continueReading.length > 0 && (
             <>
               <SectionHeader
-                title="Continuer la lecture"
+                title={t('ui.home.sections.continueReading')}
                 onSeeAllPress={() => console.log('See all continue')}
               />
               <FlatList
@@ -271,7 +276,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,

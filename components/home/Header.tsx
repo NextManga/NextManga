@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -14,6 +15,9 @@ export const Header = ({
   onAvatarPress,
   onNotificationPress 
 }: Props) => {
+  const { t } = useTranslation();
+  const displayName = userName || t('ui.home.defaultUser');
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onAvatarPress} style={styles.avatar}>
@@ -21,8 +25,8 @@ export const Header = ({
       </TouchableOpacity>
 
       <View style={styles.greeting}>
-        <Text style={styles.hello}>Bonjour, {userName} 👋</Text>
-        <Text style={styles.subtitle}>Découvrez de nouveaux mangas</Text>
+        <Text style={styles.hello}>{t('ui.header.hello', { name: displayName })}</Text>
+        <Text style={styles.subtitle}>{t('ui.header.subtitle')}</Text>
       </View>
 
       <TouchableOpacity onPress={onNotificationPress} style={styles.notificationButton}>

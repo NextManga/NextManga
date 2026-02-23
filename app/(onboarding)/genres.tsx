@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { GenreCard } from '@/components/onboarding/GenreCard';
@@ -15,6 +16,7 @@ import { api } from '@/services/api';
 export default function GenresScreen() {
     const { formData, updateFormData } = useSignUpForm();
     const { userId, token, user, setUser } = useAuth();
+    const { t } = useTranslation();
     const isEditingProfile = !!userId && !!token; // Si authentifié, on édite le profil
     
     const [selected, setSelected] = useState<string[]>(formData.genres);
@@ -49,12 +51,12 @@ export default function GenresScreen() {
                     token
                 );
                 setUser(updatedProfile);
-                Alert.alert('Succès', 'Vos préférences ont été mises à jour !', [
-                    { text: 'OK', onPress: () => router.back() }
+                Alert.alert(t('common.successTitle'), t('ui.onboarding.genres.updateSuccessMessage'), [
+                    { text: t('common.ok'), onPress: () => router.back() }
                 ]);
             } catch (error) {
                 console.error('Erreur lors de la mise à jour des préférences:', error);
-                Alert.alert('Erreur', 'Impossible de sauvegarder vos préférences.');
+                Alert.alert(t('common.errorTitle'), t('ui.onboarding.genres.updateErrorMessage'));
             } finally {
                 setIsSaving(false);
             }
@@ -68,15 +70,13 @@ export default function GenresScreen() {
     return (
         <View style={styles.container}>
             <OnboardingHeader
-                step={isEditingProfile ? "Édition" : "Étape 1/2"}
+                step={isEditingProfile ? t('ui.onboarding.steps.editing') : t('ui.onboarding.steps.step1of2')}
                 onBack={() => router.back()}
                 onSkip={isEditingProfile ? undefined : () => router.replace('/')}
             />
 
-            <Text style={styles.title}>Quels genres aimez-vous ?</Text>
-            <Text style={styles.subtitle}>
-                Sélectionnez au moins 3 genres pour personnaliser vos recommandations
-            </Text>
+            <Text style={styles.title}>{t('ui.onboarding.genres.title')}</Text>
+            <Text style={styles.subtitle}>{t('ui.onboarding.genres.subtitle')}</Text>
 
             <FlatList
                 data={GENRES}
@@ -96,11 +96,17 @@ export default function GenresScreen() {
 
             <View style={styles.bottom}>
                 <Text style={[styles.counter, selected.length < 3 && styles.counterError]}>
-                    {selected.length} genres sélectionnés
+                    {t('ui.onboarding.genres.selectedCount', { count: selected.length })}
                 </Text>
 
                 <AppButton
-                    title={isSaving ? "Sauvegarde..." : (isEditingProfile ? "Enregistrer" : "Continuer")}
+                    title={
+                        isSaving
+                            ? t('common.saving')
+                            : isEditingProfile
+                                ? t('common.save')
+                                : t('common.continue')
+                    }
                     onPress={handleContinue}
                     disabled={selected.length < 3 || isSaving}
                 />

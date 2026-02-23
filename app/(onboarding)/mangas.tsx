@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { MangaCard } from '@/components/onboarding/MangaCard';
@@ -14,6 +15,7 @@ import { api } from '@/services/api';
 
 
 export default function MangasScreen() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +45,7 @@ export default function MangasScreen() {
 
       // Vérifier que les données requises sont présentes
       if (!formData.email || !formData.password || !formData.displayName) {
-        Alert.alert('Erreur', 'Données d\'inscription manquantes');
+        Alert.alert(t('common.errorTitle'), t('ui.onboarding.mangas.missingDataMessage'));
         setIsSubmitting(false);
         setLoading(false);
         return;
@@ -61,19 +63,19 @@ export default function MangasScreen() {
       if (response) {
         // Succès - réinitialiser le formulaire et rediriger
         resetForm();
-        Alert.alert('Succès', 'Compte créé avec succès !', [
+        Alert.alert(t('common.successTitle'), t('ui.onboarding.mangas.successMessage'), [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => router.replace('/'),
           },
         ]);
       } else {
-        throw new Error('Réponse invalide du serveur');
+        throw new Error(t('ui.onboarding.mangas.invalidResponse'));
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Une erreur est survenue lors de la création du compte';
+      const errorMessage = error.message || t('ui.onboarding.mangas.signupError');
       setFormError(errorMessage);
-      Alert.alert('Erreur', errorMessage);
+      Alert.alert(t('common.errorTitle'), errorMessage);
       console.error('Erreur inscription:', error);
     } finally {
       setIsSubmitting(false);
@@ -84,15 +86,13 @@ export default function MangasScreen() {
   return (
     <View style={styles.container}>
       <OnboardingHeader
-        step="Étape 2/2"
+        step={t('ui.onboarding.steps.step2of2')}
         onBack={() => router.back()}
         onSkip={() => router.replace('/')}
       />
 
-      <Text style={styles.title}>Quels mangas avez-vous déjà lus ?</Text>
-      <Text style={styles.subtitle}>
-        Cela nous aide à mieux vous recommander de nouveaux titres
-      </Text>
+      <Text style={styles.title}>{t('ui.onboarding.mangas.title')}</Text>
+      <Text style={styles.subtitle}>{t('ui.onboarding.mangas.subtitle')}</Text>
 
       <MangaSearchBar
         value={query}
@@ -108,7 +108,7 @@ export default function MangasScreen() {
       />
 
       {!query && (
-        <Text style={styles.sectionLabel}>Populaires</Text>
+        <Text style={styles.sectionLabel}>{t('ui.onboarding.mangas.popular')}</Text>
       )}
 
       {loading && <ActivityIndicator style={{ marginVertical: 20 }} />}
@@ -133,12 +133,12 @@ export default function MangasScreen() {
 
       <View style={styles.bottom}>
         <Text style={styles.counter}>
-          {selected.length} mangas sélectionnés
+          {t('ui.onboarding.mangas.selectedCount', { count: selected.length })}
         </Text>
 
         <View style={styles.actions}>
           <AppButton
-            title="Retour"
+            title={t('common.back')}
             variant="outline"
             onPress={router.back}
             style={styles.backButton}
@@ -146,7 +146,7 @@ export default function MangasScreen() {
             disabled={isSubmitting}
           />
           <AppButton
-            title={isSubmitting ? 'Création...' : 'Terminer'}
+            title={isSubmitting ? t('common.creating') : t('common.finish')}
             onPress={handleFinish}
             style={styles.finishButton}
             textStyle={styles.finishButtonText}

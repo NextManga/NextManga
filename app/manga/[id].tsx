@@ -1,13 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 
 import { MangaActionButtons } from '@/components/manga-detail/MangaActionButtons';
@@ -19,8 +19,8 @@ import { MangaRecommendations } from '@/components/manga-detail/MangaRecommendat
 import { MangaSynopsisSection } from '@/components/manga-detail/MangaSynopsisSection';
 import { MangaTitleInfo } from '@/components/manga-detail/MangaTitleInfo';
 
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { api } from '@/services/api';
 
 export interface MangaDetail {
@@ -49,6 +49,7 @@ export default function MangaDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { userId, token } = useAuth();
+  const colors = useThemeColors();
 
   const [manga, setManga] = useState<MangaDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,7 +218,7 @@ export default function MangaDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
@@ -226,11 +227,11 @@ export default function MangaDetailScreen() {
 
   if (!manga) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>Impossible de charger ce manga</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>Impossible de charger ce manga</Text>
         </View>
       </View>
     );
@@ -240,10 +241,10 @@ export default function MangaDetailScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-    >
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      >
       <MangaHeroSection
         coverImage={manga.coverImage}
         onBackPress={() => router.back()}
@@ -299,7 +300,6 @@ export default function MangaDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     paddingHorizontal: 24,
@@ -316,7 +316,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 16,
     textAlign: 'center',
   },
