@@ -1,3 +1,4 @@
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,23 +17,28 @@ export const Header = ({
   onNotificationPress 
 }: Props) => {
   const { t } = useTranslation();
+  const colors = useThemeColors();
   const displayName = userName || t('ui.home.defaultUser');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surfacePrimary }]}>
       <TouchableOpacity onPress={onAvatarPress} style={styles.avatar}>
-        <Ionicons name="person-circle" size={40} color="#6366F1" />
+        <Ionicons name="person-circle" size={40} color={colors.primary} />
       </TouchableOpacity>
 
       <View style={styles.greeting}>
-        <Text style={styles.hello}>{t('ui.header.hello', { name: displayName })}</Text>
-        <Text style={styles.subtitle}>{t('ui.header.subtitle')}</Text>
+        <Text style={[styles.hello, { color: colors.textSecondary }]}>
+          {t('ui.header.hello', { name: displayName })}
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textPrimary }]}>
+          {t('ui.header.subtitle')}
+        </Text>
       </View>
 
       <TouchableOpacity onPress={onNotificationPress} style={styles.notificationButton}>
-        <Ionicons name="notifications-outline" size={24} color="#1F2937" />
+        <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} />
         {notificationCount > 0 && (
-          <View style={styles.badge}>
+          <View style={[styles.badge, { borderColor: colors.surfacePrimary }]}>
             <Text style={styles.badgeText}>{notificationCount}</Text>
           </View>
         )}
@@ -44,7 +50,6 @@ export const Header = ({
 const styles = StyleSheet.create({
   container: {
     height: 120,
-    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -59,8 +64,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E0E7FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -70,13 +73,11 @@ const styles = StyleSheet.create({
   },
   hello: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   notificationButton: {
     width: 40,
@@ -96,7 +97,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   badgeText: {
     color: '#FFFFFF',

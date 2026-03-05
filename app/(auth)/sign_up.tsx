@@ -29,10 +29,14 @@ export default function SignUpScreen() {
             setValidationError(t('ui.auth.signUp.displayNameRequired'));
             return;
         }
-        if (!formData.email.trim() || !formData.email.includes('@')) {
+        
+        // Email validation avec regex plus stricte
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email.trim() || !emailRegex.test(formData.email.trim())) {
             setValidationError(t('ui.auth.signUp.invalidEmail'));
             return;
         }
+        
         if (formData.password.length < 6) {
             setValidationError(t('ui.auth.signUp.passwordMin'));
             return;
@@ -47,6 +51,11 @@ export default function SignUpScreen() {
         }
 
         setValidationError(null);
+        console.log('✅ Données d\'inscription validées et sauvegardées:', {
+            displayName: formData.displayName,
+            email: formData.email,
+            password: '***'
+        });
         router.push('/(onboarding)/genres');
     };
 

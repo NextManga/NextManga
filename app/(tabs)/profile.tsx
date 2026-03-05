@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GENRES } from '@/constants/genres';
 import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -259,16 +260,27 @@ export default function ProfileScreen() {
     try {
       setIsLoading(true);
       setHasError(false);
-      const data = await api.getUser(userId, token);
+      const [data, favoriteGenres] = await Promise.all([
+        api.getUser(userId, token),
+        api.getFavoriteGenres(userId, token).catch(() => []),
+      ]);
+
+      const profileWithGenres: UserProfile = {
+        ...data,
+        preferences: {
+          ...(data.preferences ?? {}),
+          genres: favoriteGenres.length > 0 ? favoriteGenres : (data.preferences?.genres ?? []),
+        },
+      };
       
       // Charger l'avatar local s'il existe
       const localAvatarUri = await AsyncStorage.getItem(`avatar_${userId}`);
       if (localAvatarUri) {
-        data.avatarUrl = localAvatarUri;
+        profileWithGenres.avatarUrl = localAvatarUri;
       }
       
-      setProfile(data);
-      setUser(data);
+      setProfile(profileWithGenres);
+      setUser(profileWithGenres);
     } catch (error) {
       console.warn('Impossible de charger le profil:', error);
       setHasError(true);
@@ -535,18 +547,23 @@ export default function ProfileScreen() {
               contentContainerStyle={styles.genreList}
             >
               {genreTags.length > 0 ? (
-                genreTags.map((tag) => (
-                  <TouchableOpacity key={tag} activeOpacity={0.8}>
-                    <LinearGradient
-                      colors={[colors.primary, colors.primaryLight]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.genreTag}
-                    >
-                      <Text style={styles.genreText}>{tag}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ))
+                genreTags.map((tag) => {
+                  const genre = GENRES.find((g) => g.id === tag);
+                  const displayText = genre ? `${genre.emoji} ${genre.label}` : tag;
+                  
+                  return (
+                    <TouchableOpacity key={tag} activeOpacity={0.8}>
+                      <LinearGradient
+                        colors={[colors.primary, colors.primaryLight]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.genreTag}
+                      >
+                        <Text style={styles.genreText}>{displayText}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  );
+                })
               ) : (
                 <View style={styles.genreEmptyWrapper}>
                   <Text style={[styles.genreEmptyText, { color: colors.textTertiary }]}>{t('profile.genres.empty')}</Text>
@@ -555,7 +572,12 @@ export default function ProfileScreen() {
             </ScrollView>
             <TouchableOpacity
               style={styles.editPreferences}
-              onPress={() => router.push('/(onboarding)/genres')}
+              onPress={() =>
+                router.push({
+                  pathname: '/(onboarding)/genres',
+                  params: { mode: 'edit' },
+                })
+              }
             >
               <Text style={[styles.editPreferencesText, { color: colors.primary }]}>✏️ {t('profile.genres.edit')}</Text>
             </TouchableOpacity>

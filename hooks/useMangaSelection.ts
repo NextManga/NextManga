@@ -25,12 +25,14 @@ type Manga = {
   id: string;
   title: string;
   cover: string;
+  rating: number;
 };
 
 const transformManga = (apiManga: ApiManga): Manga => ({
   id: apiManga.id.toString(),
   title: apiManga.title.english || apiManga.title.romaji,
   cover: apiManga.coverImage,
+  rating: apiManga.score ? Math.round(apiManga.score * 10) / 10 : 0,
 });
 
 export const useMangaSelection = () => {

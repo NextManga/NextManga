@@ -1,3 +1,4 @@
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -16,27 +17,33 @@ export const ContinueReadingCard = ({
   totalChapters,
   onPress 
 }: Props) => {
+  const colors = useThemeColors();
   const progress = (currentChapter / totalChapters) * 100;
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity 
+      style={[styles.container, { backgroundColor: colors.surfacePrimary }]} 
+      onPress={onPress}
+    >
       <Image source={{ uri: cover }} style={styles.cover} />
       
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          {title}
+        </Text>
         
         <View style={styles.progressContainer}>
-          <View style={styles.progressBackground}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          <View style={[styles.progressBackground, { backgroundColor: colors.border }]}>
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
           </View>
         </View>
         
-        <Text style={styles.chapter}>
+        <Text style={[styles.chapter, { color: colors.textSecondary }]}>
           Chapitre {currentChapter}/{totalChapters}
         </Text>
       </View>
 
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" style={styles.arrow} />
+      <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} style={styles.arrow} />
     </TouchableOpacity>
   );
 };
@@ -45,7 +52,6 @@ const styles = StyleSheet.create({
   container: {
     width: 280,
     height: 120,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     flexDirection: 'row',
     marginRight: 12,
@@ -69,25 +75,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
   },
   progressContainer: {
     marginVertical: 4,
   },
   progressBackground: {
     height: 6,
-    backgroundColor: '#E5E7EB',
     borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6366F1',
     borderRadius: 3,
   },
   chapter: {
     fontSize: 12,
-    color: '#6B7280',
   },
   arrow: {
     alignSelf: 'center',

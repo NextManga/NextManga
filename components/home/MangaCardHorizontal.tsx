@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 type Props = {
   title: string;
@@ -12,6 +12,9 @@ type Props = {
   onPress?: () => void;
   onBookmarkPress?: () => void;
   isBookmarked?: boolean;
+  cardWidth?: number;
+  cardHeight?: number;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
 export const MangaCardHorizontal = ({ 
@@ -23,11 +26,14 @@ export const MangaCardHorizontal = ({
   position,
   onPress,
   onBookmarkPress,
-  isBookmarked = false
+  isBookmarked = false,
+  cardWidth,
+  cardHeight,
+  containerStyle,
 }: Props) => {
   return (
-    <Pressable onPress={onPress} style={styles.container}>
-      <View style={styles.card}>
+    <Pressable onPress={onPress} style={[styles.container, containerStyle]}>
+      <View style={[styles.card, cardWidth ? { width: cardWidth } : null, cardHeight ? { height: cardHeight } : null]}>
         <Image source={{ uri: cover }} style={styles.image} />
         
         <LinearGradient

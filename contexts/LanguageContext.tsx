@@ -1,4 +1,5 @@
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 import { useNotifications } from '@/contexts/NotificationContext';
 import { initI18n, LanguageCode, setI18nLanguage } from '@/i18n';
@@ -19,10 +20,17 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     let isMounted = true;
 
     const initialize = async () => {
-      const initialLanguage = await initI18n();
-      if (isMounted) {
-        setLanguageState(initialLanguage);
-        setIsReady(true);
+      try {
+        const initialLanguage = await initI18n();
+        if (isMounted) {
+          setLanguageState(initialLanguage);
+          setIsReady(true);
+        }
+      } catch (error) {
+        console.error('Error initializing i18n:', error);
+        if (isMounted) {
+          setIsReady(true); // Still mark as ready to avoid blocking UI
+        }
       }
     };
 
@@ -43,7 +51,11 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   };
 
   if (!isReady) {
-    return null;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
   }
 
   return (

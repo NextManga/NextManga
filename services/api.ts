@@ -18,10 +18,40 @@ const mapToRecommendationItem = (item: any): RecommendationItem => {
   };
 };
 
+const extractFavoriteGenres = (payload: any): string[] => {
+  if (Array.isArray(payload)) {
+    return payload.filter((genre) => typeof genre === 'string');
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const candidates = [
+    payload.genres,
+    payload.favoriteGenres,
+    payload.data,
+    payload.data?.genres,
+    payload.data?.favoriteGenres,
+    payload.items,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((genre) => typeof genre === 'string');
+    }
+  }
+
+  return [];
+};
+
 export interface CreateUserPayload {
   email: string;
   password: string;
   displayName: string;
+  preferences?: {
+    targetAudience?: string;
+  };
 }
 
 export interface LoginPayload {
@@ -349,8 +379,30 @@ export const api = {
     }
   },
 
-  createUser: async (payload: CreateUserPayload): Promise<UserProfile> => {
-    return api.post<UserProfile>('/api/users', payload);
+  createUser: async (payload: CreateUserPayload): Promise<LoginResponse> => {
+    try {
+      return await api.post<LoginResponse>('/api/users', payload);
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const needsPreferenceFallback =
+        message.includes('preferences.targetAudience') ||
+        message.includes('Preferences must be an object') ||
+        message.includes('User validation failed');
+
+      if (!needsPreferenceFallback) {
+        throw error;
+      }
+
+      const fallbackPayload: CreateUserPayload = {
+        ...payload,
+        preferences: {
+          targetAudience: payload.preferences?.targetAudience || 'all',
+        },
+      };
+
+      console.log('🔁 Retry createUser with preferences fallback');
+      return api.post<LoginResponse>('/api/users', fallbackPayload);
+    }
   },
 
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -425,11 +477,25 @@ export const api = {
     },
     token: string
   ): Promise<UserProfile> => {
-    return api.authenticatedPut<UserProfile>(
-      `/api/users/${userId}/preferences`,
-      preferences,
-      token
-    );
+    const endpoint = `/api/users/${userId}/preferences`;
+
+    try {
+      return await api.authenticatedPut<UserProfile>(
+        endpoint,
+        { preferences },
+        token
+      );
+    } catch (firstError) {
+      try {
+        return await api.authenticatedPut<UserProfile>(
+          endpoint,
+          preferences,
+          token
+        );
+      } catch {
+        throw firstError;
+      }
+    }
   },
 
   getHistory: async (userId: string, token: string): Promise<HistoryItem[]> => {
@@ -445,7 +511,7 @@ export const api = {
   },
 
   updateHistory: async (userId: string, mangaId: string, data: any, token: string): Promise<any> => {
-    return api.authenticatedPost<any>(`/api/users/${userId}/history/${mangaId}`, data, token);
+    return api.authenticatedPut<any>(`/api/users/${userId}/history/${mangaId}`, data, token);
   },
 
   // Upload avatar
@@ -553,10 +619,13 @@ export const api = {
   // ============================================
 
   // ✅ GET Trending mangas
-  getTrendingMangas: async (): Promise<RecommendationItem[]> => {
+  getTrendingMangas: async (limit: number = 20): Promise<RecommendationItem[]> => {
     try {
-      console.log(`🔵 GET Request: ${API_URL}/api/manga/trending`);
-      const res = await fetch(`${API_URL}/api/manga/trending`);
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+      });
+      console.log(`🔵 GET Request: ${API_URL}/api/manga/trending?${params.toString()}`);
+      const res = await fetch(`${API_URL}/api/manga/trending?${params.toString()}`);
       console.log(`📊 Response Status: ${res.status}`);
       if (!res.ok) throw new Error(`Erreur API (${res.status})`);
       const response = await res.json();
@@ -678,4 +747,53 @@ export const api = {
       return [];
     }
   },
-};
+
+  // ✅ Gestion des genres favoris
+  getFavoriteGenres: async (userId: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/favorite-genres`, token);
+    return extractFavoriteGenres(response);
+  },
+
+  replaceFavoriteGenres: async (userId: string, genres: string[], token: string): Promise<string[]> => {
+    const endpoint = `/api/users/${userId}/favorite-genres`;
+
+    try {
+      const response = await api.authenticatedPut<any>(
+        endpoint,
+        { genres, favoriteGenres: genres },
+        token
+      );
+      return extractFavoriteGenres(response);
+    } catch (firstError) {
+      try {
+        const response = await api.authenticatedPut<any>(endpoint, genres, token);
+        return extractFavoriteGenres(response);
+      } catch {
+        throw firstError;
+      }
+    }
+  },
+
+  addFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedPost<any>(
+      `/api/users/${userId}/favorite-genres`,
+      { genre, genreId: genre },
+      token
+    );
+    return extractFavoriteGenres(response);
+  },
+
+  removeFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.delete<any>(`/api/users/${userId}/favorite-genres/${genre}`, token);
+    return extractFavoriteGenres(response);
+  },
+
+  toggleFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedPost<any>(
+      `/api/users/${userId}/favorite-genres/toggle`,
+      { genre, genreId: genre },
+      token
+    );
+    return extractFavoriteGenres(response);
+  },
+}

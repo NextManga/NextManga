@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
@@ -17,7 +17,8 @@ export default function GenresScreen() {
     const { formData, updateFormData } = useSignUpForm();
     const { userId, token, user, setUser } = useAuth();
     const { t } = useTranslation();
-    const isEditingProfile = !!userId && !!token; // Si authentifié, on édite le profil
+    const { mode } = useLocalSearchParams<{ mode?: string }>();
+    const isEditingProfile = mode === 'edit' && !!userId && !!token;
     
     const [selected, setSelected] = useState<string[]>(formData.genres);
     const [isSaving, setIsSaving] = useState(false);
@@ -45,12 +46,15 @@ export default function GenresScreen() {
             // ✅ Mode édition profil: sauvegarder sur l'API
             try {
                 setIsSaving(true);
-                const updatedProfile = await api.updateUserPreferences(
-                    userId,
-                    { genres: selected },
-                    token
-                );
-                setUser(updatedProfile);
+                const savedGenres = await api.replaceFavoriteGenres(userId, selected, token);
+                const currentProfile = user ?? await api.getUser(userId, token);
+                await setUser({
+                    ...currentProfile,
+                    preferences: {
+                        ...(currentProfile.preferences ?? {}),
+                        genres: savedGenres.length > 0 ? savedGenres : selected,
+                    },
+                });
                 Alert.alert(t('common.successTitle'), t('ui.onboarding.genres.updateSuccessMessage'), [
                     { text: t('common.ok'), onPress: () => router.back() }
                 ]);
@@ -62,7 +66,7 @@ export default function GenresScreen() {
             }
         } else {
             // Mode onboarding: sauvegarder dans le contexte
-            updateFormData({ genres: selected });
+            await updateFormData({ genres: selected });
             router.push('/(onboarding)/mangas');
         }
     };

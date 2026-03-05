@@ -23,7 +23,7 @@ import { SectionHeader } from '@/components/home/SectionHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { api } from '@/services/api';
+import { api, HistoryItem } from '@/services/api';
 
 // Mock data - pour featured manga
 const FEATURED_MANGA = {
@@ -38,7 +38,7 @@ const DEFAULT_TRENDING_MANGAS: any[] = [];
 const DEFAULT_NEW_RELEASES: any[] = [];
 
 export default function HomeScreen() {
-  const { user, userId, token } = useAuth();
+  const { user, userId, token, setUser } = useAuth();
   const colors = useThemeColors();
   const router = useRouter();
   const { t } = useTranslation();
@@ -52,6 +52,7 @@ export default function HomeScreen() {
   const [trending, setTrending] = useState<any[]>(DEFAULT_TRENDING_MANGAS);
   const [newReleases, setNewReleases] = useState<any[]>(DEFAULT_NEW_RELEASES);
   const [continueReading, setContinueReading] = useState<any[]>([]);
+  const [libraryHistory, setLibraryHistory] = useState<HistoryItem[]>([]);
 
   const notificationCount = notifications.length;
 
@@ -96,6 +97,18 @@ export default function HomeScreen() {
     try {
       setIsLoading(true);
 
+      // Charger le profil utilisateur si pas déjà en cache
+      if (!user) {
+        try {
+          console.log('👤 Chargement du profil utilisateur...');
+          const userProfile = await api.getUser(userId, token);
+          console.log('✅ Profil chargé:', userProfile);
+          setUser(userProfile);
+        } catch (err) {
+          console.warn('Impossible de charger le profil utilisateur:', err);
+        }
+      }
+
       // Charger l'historique de lecture
       try {
         const history = await api.getHistory(userId, token);
@@ -128,7 +141,7 @@ export default function HomeScreen() {
 
       // Charger les tendances depuis l'API
       try {
-        const trendingData = await api.getTrendingMangas();
+        const trendingData = await api.getTrendingMangas(20);
         if (trendingData && trendingData.length > 0) {
           setTrending(trendingData);
         } else {
@@ -141,7 +154,7 @@ export default function HomeScreen() {
 
       // Charger les nouveautés depuis l'API
       try {
-        const newData = await api.getNewReleases();
+        const newData = await api.getNewReleases(1, 20);
         if (newData && newData.length > 0) {
           setNewReleases(newData);
         } else {
@@ -150,6 +163,21 @@ export default function HomeScreen() {
       } catch (err) {
         console.warn('Impossible de charger les nouveautés:', err);
         setNewReleases([]);
+      }
+
+      // Charger l'historique (bibliothèque)
+      try {
+        const history = await api.getHistory(userId, token);
+        let historyArray: HistoryItem[] = [];
+        if (Array.isArray(history)) {
+          historyArray = history;
+        } else if (history && typeof history === 'object') {
+          historyArray = (history as any).history || (history as any).data || [];
+        }
+        setLibraryHistory(historyArray);
+      } catch (err) {
+        console.warn('Impossible de charger la bibliothèque:', err);
+        setLibraryHistory([]);
       }
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
@@ -201,10 +229,71 @@ export default function HomeScreen() {
             onLearnMorePress={() => console.log('Learn more pressed')}
           />
 
+          {/* Library Section */}
+          {libraryHistory.length > 0 && (
+            <>
+              {/* À lire */}
+              {libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status)).length > 0 && (
+                <>
+                  <SectionHeader
+                    title={t('ui.library.toRead')}
+                    onSeeAllPress={() => router.push('/library' as any)}
+                  />
+                  <FlatList
+                    data={libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status))}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalList}
+                    snapToInterval={152}
+                    decelerationRate="fast"
+                    renderItem={({ item }) => (
+                      <MangaCardHorizontal
+                        title={item.title}
+                        cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                        rating={item.rating}
+                        onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+                        onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+                      />
+                    )}
+                    keyExtractor={(item) => item.mangaId}
+                  />
+                </>
+              )}
+
+              {/* Déjà lus */}
+              {libraryHistory.filter(item => item.status === 'completed').length > 0 && (
+                <>
+                  <SectionHeader
+                    title={t('ui.library.completed')}
+                    onSeeAllPress={() => router.push('/library' as any)}
+                  />
+                  <FlatList
+                    data={libraryHistory.filter(item => item.status === 'completed')}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalList}
+                    snapToInterval={152}
+                    decelerationRate="fast"
+                    renderItem={({ item }) => (
+                      <MangaCardHorizontal
+                        title={item.title}
+                        cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                        rating={item.rating}
+                        onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+                        onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+                      />
+                    )}
+                    keyExtractor={(item) => item.mangaId}
+                  />
+                </>
+              )}
+            </>
+          )}
+
           {/* AI Recommendations Section */}
           <SectionHeader
             title={t('ui.home.sections.aiRecommendations')}
-            onSeeAllPress={() => console.log('See all AI')}
+            onSeeAllPress={() => router.push({ pathname: '/category/[type]' as any, params: { type: 'ai-recommendations' } })}
           />
           <FlatList
             data={aiRecommendations}
@@ -228,7 +317,7 @@ export default function HomeScreen() {
           {/* Trending Section */}
           <SectionHeader
             title={t('ui.home.sections.trending')}
-            onSeeAllPress={() => console.log('See all trending')}
+            onSeeAllPress={() => router.push({ pathname: '/category/[type]' as any, params: { type: 'trending' } })}
           />
           <FlatList
             data={trending}
@@ -253,7 +342,7 @@ export default function HomeScreen() {
           {/* New Releases Section */}
           <SectionHeader
             title={t('ui.home.sections.newReleases')}
-            onSeeAllPress={() => console.log('See all new')}
+            onSeeAllPress={() => router.push({ pathname: '/category/[type]' as any, params: { type: 'new-releases' } })}
           />
           <FlatList
             data={newReleases}
@@ -281,7 +370,7 @@ export default function HomeScreen() {
             <>
               <SectionHeader
                 title={t('ui.home.sections.continueReading')}
-                onSeeAllPress={() => console.log('See all continue')}
+                onSeeAllPress={() => router.push({ pathname: '/category/[type]' as any, params: { type: 'continue-reading' } })}
               />
               <FlatList
                 data={continueReading}

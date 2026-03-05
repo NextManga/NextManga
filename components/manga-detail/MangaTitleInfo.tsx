@@ -6,7 +6,7 @@ interface MangaTitleInfoProps {
   title: string;
   author: string;
   status: 'reading' | 'completed' | 'paused' | 'planned' | 'dropped';
-  chapters: number;
+  // chapters: number;
   year: number;
 }
 
@@ -48,7 +48,7 @@ export const MangaTitleInfo: React.FC<MangaTitleInfoProps> = ({
   title,
   author,
   status,
-  chapters,
+  // chapters,
   year,
 }) => {
   const colors = useThemeColors();
@@ -61,10 +61,10 @@ export const MangaTitleInfo: React.FC<MangaTitleInfoProps> = ({
       <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
 
       {/* Author */}
-      <View style={styles.authorRow}>
+      {/* <View style={styles.authorRow}>
         <Text style={styles.authorIcon}>👤</Text>
         <Text style={[styles.authorText, { color: colors.primary }]}>Par {author}</Text>
-      </View>
+      </View> */}
 
       {/* Status & Stats Row */}
       <View style={styles.statsRow}>
@@ -73,9 +73,9 @@ export const MangaTitleInfo: React.FC<MangaTitleInfoProps> = ({
           <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
         </View>
 
-        <Text style={[styles.separator, { color: colors.border }]}>•</Text>
+        {/* <Text style={[styles.separator, { color: colors.border }]}>•</Text> */}
 
-        <Text style={[styles.stat, { color: colors.textSecondary }]}>{chapters.toLocaleString()} chapitres</Text>
+        {/* <Text style={[styles.stat, { color: colors.textSecondary }]}>{chapters.toLocaleString()} chapitres</Text> */}
 
         <Text style={[styles.separator, { color: colors.border }]}>•</Text>
 

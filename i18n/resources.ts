@@ -134,6 +134,23 @@ export const resources = {
         search: {
           placeholder: 'Search for a manga...',
         },
+        welcome: {
+          next: 'Next',
+          skip: 'Skip',
+          getStarted: 'Start the adventure',
+          step1: {
+            title: 'Discover thousands of manga',
+            subtitle: 'Explore our vast library and get personalized recommendations powered by AI',
+          },
+          step2: {
+            title: 'Smart recommendations',
+            subtitle: 'Our AI analyzes your tastes to suggest the perfect manga for every visit',
+          },
+          step3: {
+            title: 'Track your progress',
+            subtitle: 'Keep track of your readings and never lose the thread of your favorite stories',
+          },
+        },
         auth: {
           signIn: {
             title: 'Sign in',
@@ -199,6 +216,8 @@ export const resources = {
             back: 'Back',
             finish: 'Finish',
             missingDataMessage: 'Missing sign-up data',
+            incompleteSignupMessage: 'The following fields are missing: {{fields}}. Please go back to the sign up page to complete your information.',
+            backToSignup: 'Back to sign up',
             successMessage: 'Account created successfully!',
             invalidResponse: 'Invalid server response',
             signupError: 'An error occurred while creating the account',
@@ -213,6 +232,21 @@ export const resources = {
           },
           badgeNew: 'NEW',
           defaultUser: 'User',
+        },
+        library: {
+          title: 'My Library',
+          toRead: 'To Read',
+          completed: 'Completed',
+          emptyToRead: 'No manga to read',
+          emptyToReadDesc: 'Add manga to your list to start reading',
+          emptyCompleted: 'No completed manga',
+          emptyCompletedDesc: 'Manga you finish will appear here',
+          status: {
+            planned: 'Planned',
+            reading: 'Reading',
+            completed: 'Completed',
+            paused: 'Paused',
+          },
         },
         explore: {
           title: 'Explore',
@@ -369,6 +403,23 @@ export const resources = {
         search: {
           placeholder: 'Rechercher un manga...',
         },
+        welcome: {
+          next: 'Suivant',
+          skip: 'Passer',
+          getStarted: "Commencer l'aventure",
+          step1: {
+            title: 'Découvrez des milliers de mangas',
+            subtitle: "Explorez notre immense bibliothèque et recevez des recommandations personnalisées grâce à l'IA",
+          },
+          step2: {
+            title: 'Recommandations intelligentes',
+            subtitle: 'Notre IA analyse vos goûts pour vous suggérer les mangas parfaits à chaque visite',
+          },
+          step3: {
+            title: 'Suivez votre progression',
+            subtitle: 'Gardez trace de vos lectures et ne perdez jamais le fil de vos histoires préférées',
+          },
+        },
         auth: {
           signIn: {
             title: 'Connexion',
@@ -434,6 +485,8 @@ export const resources = {
             back: 'Retour',
             finish: 'Terminer',
             missingDataMessage: "Données d'inscription manquantes",
+            incompleteSignupMessage: "Les champs suivants sont manquants : {{fields}}. Veuillez retourner à la page d'inscription pour compléter vos informations.",
+            backToSignup: 'Retourner à l\'inscription',
             successMessage: 'Compte créé avec succès !',
             invalidResponse: 'Réponse invalide du serveur',
             signupError: "Une erreur est survenue lors de la création du compte",
@@ -448,6 +501,21 @@ export const resources = {
           },
           badgeNew: 'NOUVEAU',
           defaultUser: 'User',
+        },
+        library: {
+          title: 'Bibliothèque',
+          toRead: 'À lire',
+          completed: 'Déjà lus',
+          emptyToRead: 'Aucun manga à lire',
+          emptyToReadDesc: 'Ajoutez des mangas à votre liste pour commencer',
+          emptyCompleted: 'Aucun manga terminé',
+          emptyCompletedDesc: 'Les mangas que vous terminez apparaîtront ici',
+          status: {
+            planned: 'Prévu',
+            reading: 'En cours',
+            completed: 'Terminé',
+            paused: 'En pause',
+          },
         },
         explore: {
           title: 'Explorer',

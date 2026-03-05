@@ -8,6 +8,7 @@ import { MangaSearchBar } from '@/components/onboarding/MangaSearchBar';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { SelectedMangaChips } from '@/components/onboarding/SelectedMangaChips';
 import { AppButton } from '@/components/ui/AppButton';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSignUpForm } from '@/contexts/SignUpContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMangaSelection } from '@/hooks/useMangaSelection';
@@ -17,12 +18,13 @@ import { api } from '@/services/api';
 export default function MangasScreen() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Array<{ id: string; title: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const debouncedQuery = useDebounce(query);
   const { trending, results, loading, searchMangas } = useMangaSelection();
-  const { formData, setLoading, setFormError, resetForm } = useSignUpForm();
+  const { formData, updateFormData, setLoading, setFormError, resetForm } = useSignUpForm();
+  const { setAuth } = useAuth();
 
   useEffect(() => {
     searchMangas(debouncedQuery);
@@ -30,11 +32,11 @@ export default function MangasScreen() {
 
   const data = query.length > 0 ? results : trending;
 
-  const toggle = (title: string) => {
+  const toggle = (manga: { id: string; title: string }) => {
     setSelected((prev) =>
-      prev.includes(title)
-        ? prev.filter((t) => t !== title)
-        : [...prev, title]
+      prev.some((item) => item.id === manga.id)
+        ? prev.filter((item) => item.id !== manga.id)
+        : [...prev, manga]
     );
   };
 
@@ -45,11 +47,39 @@ export default function MangasScreen() {
 
       // Vérifier que les données requises sont présentes
       if (!formData.email || !formData.password || !formData.displayName) {
-        Alert.alert(t('common.errorTitle'), t('ui.onboarding.mangas.missingDataMessage'));
+        // Déterminer quel champ manque
+        const missingFields = [];
+        if (!formData.displayName) missingFields.push(t('ui.auth.signUp.displayNamePlaceholder'));
+        if (!formData.email) missingFields.push(t('ui.auth.signUp.emailPlaceholder'));
+        if (!formData.password) missingFields.push(t('ui.auth.signUp.passwordPlaceholder'));
+        
+        const fieldsText = missingFields.join(', ');
+        const detailedMessage = t('ui.onboarding.mangas.incompleteSignupMessage', { fields: fieldsText });
+        
+        Alert.alert(
+          t('common.errorTitle'), 
+          detailedMessage,
+          [
+            { 
+              text: t('ui.onboarding.mangas.backToSignup'), 
+              onPress: () => router.push('/(auth)/sign_up') 
+            },
+            { 
+              text: t('common.cancel'), 
+              style: 'cancel' 
+            }
+          ]
+        );
         setIsSubmitting(false);
         setLoading(false);
         return;
       }
+
+      console.log('📝 Envoi des données d\'inscription...', { 
+        email: formData.email, 
+        displayName: formData.displayName,
+        password: '***' 
+      });
 
       // Créer l'utilisateur via l'API
       const response = await api.createUser({
@@ -58,25 +88,94 @@ export default function MangasScreen() {
         displayName: formData.displayName,
       });
 
-      console.log('✅ User created:', response);
+      console.log('✅ Utilisateur créé:', response);
 
-      if (response) {
-        // Succès - réinitialiser le formulaire et rediriger
-        resetForm();
-        Alert.alert(t('common.successTitle'), t('ui.onboarding.mangas.successMessage'), [
-          {
-            text: t('common.ok'),
-            onPress: () => router.replace('/'),
-          },
-        ]);
-      } else {
-        throw new Error(t('ui.onboarding.mangas.invalidResponse'));
+      // L'utilisateur a été créé, maintenant faire un login automatique pour obtenir le token
+      console.log('🔐 Authentification automatique...');
+      try {
+        const loginResponse = await api.login({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        console.log('✅ Login réussi:', loginResponse);
+
+        if (loginResponse && loginResponse.token && loginResponse.user) {
+          // Utiliser les données du user retourné
+          const userProfile = loginResponse.user;
+          const authToken = loginResponse.token;
+
+          // Sauvegarder les genres favoris sélectionnés
+          if (formData.genres && formData.genres.length > 0) {
+            try {
+              console.log('📝 Sauvegarde des genres favoris:', formData.genres);
+              const savedGenres = await api.replaceFavoriteGenres(
+                userProfile._id,
+                formData.genres,
+                authToken
+              );
+              if (savedGenres.length === 0) {
+                console.warn('⚠️ Réponse vide lors de la sauvegarde des genres favoris');
+              } else {
+                console.log('✅ Genres favoris sauvegardés:', savedGenres);
+              }
+            } catch (genreError) {
+              console.warn('⚠️ Erreur sauvegarde genres (non bloquant):', genreError);
+              // Même si ça échoue, on continue avec l'authentification
+            }
+          }
+
+          // Sauvegarder les mangas sélectionnés dans l'historique utilisateur
+          if (selected.length > 0) {
+            try {
+              const selectedMangaIds = selected.map((item) => item.id);
+              console.log('📝 Sauvegarde des mangas onboarding (history):', selectedMangaIds);
+              await Promise.allSettled(
+                selectedMangaIds.map((mangaId) =>
+                  api.addToHistory(
+                    userProfile._id,
+                    {
+                      mangaId,
+                      status: 'planned',
+                    },
+                    authToken
+                  )
+                )
+              );
+              await updateFormData({ selectedMangas: selectedMangaIds });
+              console.log('✅ Mangas onboarding traités pour l\'historique');
+            } catch (historyError) {
+              console.warn('⚠️ Erreur sauvegarde historique mangas (non bloquant):', historyError);
+            }
+          }
+
+          // Authentifier l'utilisateur
+          await setAuth(userProfile._id, authToken, userProfile);
+
+          // Réinitialiser le formulaire d'inscription
+          await resetForm();
+
+          // Afficher un message de succès et rediriger vers la home
+          Alert.alert(t('common.successTitle'), t('ui.onboarding.mangas.successMessage'), [
+            {
+              text: t('common.ok'),
+              onPress: () => router.replace('/(tabs)'),
+            },
+          ]);
+        } else {
+          throw new Error('Données invalides reçues lors de l\'authentification');
+        }
+      } catch (loginError: any) {
+        console.error('❌ Erreur lors de l\'authentification automatique:', loginError);
+        const errorMessage = loginError.message || t('ui.onboarding.mangas.signupError');
+        setFormError(errorMessage);
+        Alert.alert(t('common.errorTitle'), `Création réussie mais erreur de connexion: ${errorMessage}`);
       }
     } catch (error: any) {
       const errorMessage = error.message || t('ui.onboarding.mangas.signupError');
       setFormError(errorMessage);
+      console.error('❌ Erreur inscription:', error);
       Alert.alert(t('common.errorTitle'), errorMessage);
-      console.error('Erreur inscription:', error);
     } finally {
       setIsSubmitting(false);
       setLoading(false);
@@ -102,8 +201,8 @@ export default function MangasScreen() {
 
       <SelectedMangaChips
         items={selected}
-        onRemove={(title) =>
-          setSelected(selected.filter((t) => t !== title))
+        onRemove={(mangaId) =>
+          setSelected(selected.filter((item) => item.id !== mangaId))
         }
       />
 
@@ -124,8 +223,9 @@ export default function MangasScreen() {
             <MangaCard
               title={item.title}
               cover={item.cover}
-              selected={selected.includes(item.title)}
-              onPress={() => toggle(item.title)}
+              rating={item.rating}
+              selected={selected.some((selectedItem) => selectedItem.id === item.id)}
+              onPress={() => toggle({ id: item.id, title: item.title })}
             />
           )}
         />

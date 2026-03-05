@@ -257,7 +257,7 @@ export default function MangaDetailScreen() {
           title={manga.title}
           author={manga.author}
           status={manga.status}
-          chapters={manga.chapters}
+          // chapters={manga.chapters}
           year={manga.year}
         />
 
@@ -288,7 +288,7 @@ export default function MangaDetailScreen() {
           score={manga.score}
         />
 
-        <MangaRecommendations mangaId={manga.id} />
+        {/* <MangaRecommendations mangaId={manga.id} /> */}
 
         <View style={{ height: 100 }} />
       </View>
