@@ -18,7 +18,7 @@ import { api } from '@/services/api';
 export default function MangasScreen() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Array<{ id: string; title: string }>>([]);
+  const [selected, setSelected] = useState<Array<{ id: string; title: string; cover: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const debouncedQuery = useDebounce(query);
@@ -32,7 +32,7 @@ export default function MangasScreen() {
 
   const data = query.length > 0 ? results : trending;
 
-  const toggle = (manga: { id: string; title: string }) => {
+  const toggle = (manga: { id: string; title: string; cover: string }) => {
     setSelected((prev) =>
       prev.some((item) => item.id === manga.id)
         ? prev.filter((item) => item.id !== manga.id)
@@ -128,21 +128,22 @@ export default function MangasScreen() {
           // Sauvegarder les mangas sélectionnés dans l'historique utilisateur
           if (selected.length > 0) {
             try {
-              const selectedMangaIds = selected.map((item) => item.id);
-              console.log('📝 Sauvegarde des mangas onboarding (history):', selectedMangaIds);
+              console.log('📝 Sauvegarde des mangas onboarding (history):', selected.length, 'mangas');
               await Promise.allSettled(
-                selectedMangaIds.map((mangaId) =>
+                selected.map((manga) =>
                   api.addToHistory(
                     userProfile._id,
                     {
-                      mangaId,
-                      status: 'planned',
+                      mangaId: manga.id,
+                      title: manga.title,
+                      cover: manga.cover,
+                      status: 'completed',
                     },
                     authToken
                   )
                 )
               );
-              await updateFormData({ selectedMangas: selectedMangaIds });
+              await updateFormData({ selectedMangas: selected.map(m => m.id) });
               console.log('✅ Mangas onboarding traités pour l\'historique');
             } catch (historyError) {
               console.warn('⚠️ Erreur sauvegarde historique mangas (non bloquant):', historyError);
@@ -225,7 +226,7 @@ export default function MangasScreen() {
               cover={item.cover}
               rating={item.rating}
               selected={selected.some((selectedItem) => selectedItem.id === item.id)}
-              onPress={() => toggle({ id: item.id, title: item.title })}
+              onPress={() => toggle({ id: item.id, title: item.title, cover: item.cover })}
             />
           )}
         />

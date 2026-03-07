@@ -111,9 +111,10 @@ export default function HomeScreen() {
 
       // Charger l'historique de lecture
       try {
-        const history = await api.getHistory(userId, token);
-        if (history && history.length > 0) {
-          const formattedHistory = history.map((item: any) => ({
+        const historyResponse = await api.getHistory(userId, token);
+        const toRead = historyResponse?.toRead?.items || [];
+        if (toRead && toRead.length > 0) {
+          const formattedHistory = toRead.map((item: any) => ({
             id: item.mangaId,
             title: item.title,
             cover: item.cover || 'https://via.placeholder.com/80x120',
@@ -167,13 +168,37 @@ export default function HomeScreen() {
 
       // Charger l'historique (bibliothèque)
       try {
-        const history = await api.getHistory(userId, token);
+        const historyResponse = await api.getHistory(userId, token);
+        console.log('📚 Raw history response:', historyResponse);
+        
         let historyArray: HistoryItem[] = [];
-        if (Array.isArray(history)) {
-          historyArray = history;
-        } else if (history && typeof history === 'object') {
-          historyArray = (history as any).history || (history as any).data || [];
+        
+        if (historyResponse && typeof historyResponse === 'object') {
+          // Format backend: { history: [...], alreadyRead: { items: [...] }, toRead: { items: [...] } }
+          if ('alreadyRead' in historyResponse && 'toRead' in historyResponse) {
+            const alreadyReadItems = historyResponse.alreadyRead?.items || [];
+            const toReadItems = historyResponse.toRead?.items || [];
+            historyArray = [
+              ...(Array.isArray(alreadyReadItems) ? alreadyReadItems : []),
+              ...(Array.isArray(toReadItems) ? toReadItems : [])
+            ];
+          }
+          // Fallback: si history existe directement
+          else if ('history' in (historyResponse as any) && Array.isArray((historyResponse as any).history)) {
+            historyArray = (historyResponse as any).history;
+          }
+          // Si l'API retourne un tableau direct
+          else if (Array.isArray(historyResponse)) {
+            historyArray = historyResponse;
+          }
+          // Si l'API retourne {data: [...]}
+          else if ('data' in (historyResponse as any) && Array.isArray((historyResponse as any).data)) {
+            historyArray = (historyResponse as any).data;
+          }
         }
+        
+        console.log('📚 Processed library history:', historyArray.length, 'items');
+        console.log('📚 Library items:', historyArray);
         setLibraryHistory(historyArray);
       } catch (err) {
         console.warn('Impossible de charger la bibliothèque:', err);
@@ -189,6 +214,40 @@ export default function HomeScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadData().finally(() => setRefreshing(false));
+  };
+
+  const handleAddToRead = async (item: any) => {
+    if (!userId || !token) {
+      console.warn('Utilisateur non connecte: impossible d\'ajouter a la liste a lire');
+      return;
+    }
+
+    const mangaId = String(item?.mangaId || item?.id || '');
+    if (!mangaId) {
+      console.warn('Impossible d\'ajouter a la liste a lire: mangaId manquant');
+      return;
+    }
+
+    const payload = {
+      mangaId,
+      title: item?.title || 'Titre inconnu',
+      cover: item?.cover,
+      status: 'planned' as const,
+    };
+
+    try {
+      await api.addToHistory(userId, payload, token);
+    } catch (error) {
+      // Si le manga existe deja, on force simplement le statut "planned"
+      try {
+        await api.updateHistory(userId, mangaId, { status: 'planned' }, token);
+      } catch (updateError) {
+        console.error('Erreur ajout a la liste a lire:', updateError);
+        return;
+      }
+    }
+
+    loadData();
   };
 
   return (
@@ -229,66 +288,100 @@ export default function HomeScreen() {
             onLearnMorePress={() => console.log('Learn more pressed')}
           />
 
-          {/* Library Section */}
-          {libraryHistory.length > 0 && (
-            <>
-              {/* À lire */}
-              {libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status)).length > 0 && (
-                <>
-                  <SectionHeader
-                    title={t('ui.library.toRead')}
-                    onSeeAllPress={() => router.push('/library' as any)}
-                  />
-                  <FlatList
-                    data={libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status))}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.horizontalList}
-                    snapToInterval={152}
-                    decelerationRate="fast"
-                    renderItem={({ item }) => (
-                      <MangaCardHorizontal
-                        title={item.title}
-                        cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
-                        rating={item.rating}
-                        onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
-                        onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
-                      />
-                    )}
-                    keyExtractor={(item) => item.mangaId}
-                  />
-                </>
-              )}
+          {/* Bibliothèque Section (Library) */}
+          <>
+            <SectionHeader
+              title={t('ui.library.title')}
+              onSeeAllPress={() => router.push('/library' as any)}
+            />
+            
+            {libraryHistory.length === 0 && (
+              <Text style={[styles.emptyText, { color: colors.textSecondary, marginHorizontal: 16, marginBottom: 24 }]}>
+                Aucun manga dans votre bibliothèque pour le moment
+              </Text>
+            )}
+            
+            {/* À lire */}
+            {libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status)).length > 0 && (
+              <>
+                <Text style={[styles.subsectionTitle, { color: colors.textPrimary }]}>
+                  {t('ui.library.toRead')}
+                </Text>
+                <FlatList
+                  data={libraryHistory.filter(item => ['planned', 'reading', 'paused'].includes(item.status))}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                  snapToInterval={152}
+                  decelerationRate="fast"
+                  renderItem={({ item }) => (
+                    <MangaCardHorizontal
+                      title={item.title}
+                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      rating={item.rating}
+                      onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+                      onBookmarkPress={() => handleAddToRead(item)}
+                    />
+                  )}
+                  keyExtractor={(item) => item.mangaId}
+                />
+              </>
+            )}
 
-              {/* Déjà lus */}
-              {libraryHistory.filter(item => item.status === 'completed').length > 0 && (
-                <>
-                  <SectionHeader
-                    title={t('ui.library.completed')}
-                    onSeeAllPress={() => router.push('/library' as any)}
-                  />
-                  <FlatList
-                    data={libraryHistory.filter(item => item.status === 'completed')}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.horizontalList}
-                    snapToInterval={152}
-                    decelerationRate="fast"
-                    renderItem={({ item }) => (
-                      <MangaCardHorizontal
-                        title={item.title}
-                        cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
-                        rating={item.rating}
-                        onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
-                        onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
-                      />
-                    )}
-                    keyExtractor={(item) => item.mangaId}
-                  />
-                </>
-              )}
-            </>
-          )}
+            {/* Déjà lus */}
+            {libraryHistory.filter(item => item.status === 'completed').length > 0 && (
+              <>
+                <Text style={[styles.subsectionTitle, { color: colors.textPrimary }]}>
+                  {t('ui.library.completed')}
+                </Text>
+                <FlatList
+                  data={libraryHistory.filter(item => item.status === 'completed')}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                  snapToInterval={152}
+                  decelerationRate="fast"
+                  renderItem={({ item }) => (
+                    <MangaCardHorizontal
+                      title={item.title}
+                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      rating={item.rating}
+                      onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+                      onBookmarkPress={() => handleAddToRead(item)}
+                    />
+                  )}
+                  keyExtractor={(item) => item.mangaId}
+                />
+              </>
+            )}
+            
+            {/* Dropped items */}
+            {libraryHistory.filter(item => item.status === 'dropped').length > 0 && (
+              <>
+                <Text style={[styles.subsectionTitle, { color: colors.textPrimary }]}>
+                  {t('ui.library.dropped') || 'Abandonnés'}
+                </Text>
+                <FlatList
+                  data={libraryHistory.filter(item => item.status === 'dropped')}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                  snapToInterval={152}
+                  decelerationRate="fast"
+                  renderItem={({ item }) => (
+                    <MangaCardHorizontal
+                      title={item.title}
+                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      rating={item.rating}
+                      onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+                      onBookmarkPress={() => handleAddToRead(item)}
+                    />
+                  )}
+                  keyExtractor={(item) => item.mangaId}
+                />
+              </>
+            )}
+          </>
 
           {/* AI Recommendations Section */}
           <SectionHeader
@@ -308,7 +401,7 @@ export default function HomeScreen() {
                 cover={item.cover}
                 rating={item.rating}
                 onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.id } })}
-                onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+                onBookmarkPress={() => handleAddToRead(item)}
               />
             )}
             keyExtractor={(item) => item.id}
@@ -333,7 +426,7 @@ export default function HomeScreen() {
                 rating={item.rating}
                 position={item.position}
                 onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.id } })}
-                onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+                onBookmarkPress={() => handleAddToRead(item)}
               />
             )}
             keyExtractor={(item) => item.id}
@@ -359,7 +452,7 @@ export default function HomeScreen() {
                 badge={t('ui.home.badgeNew')}
                 badgeColor="#06B6D4"
                 onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.id } })}
-                onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+                onBookmarkPress={() => handleAddToRead(item)}
               />
             )}
             keyExtractor={(item) => item.id}
@@ -463,6 +556,13 @@ const styles = StyleSheet.create({
   horizontalList: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  subsectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 16,
+    marginBottom: 12,
+    marginTop: 12,
   },
   loadingContainer: {
     flex: 1,

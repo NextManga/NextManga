@@ -45,6 +45,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen name="manga" options={{ headerShown: false }} />
         <Stack.Screen name="library" options={{ headerShown: false }} />
+        <Stack.Screen name="library/index" options={{ headerShown: false }} />
         <Stack.Screen name="category/[type]" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

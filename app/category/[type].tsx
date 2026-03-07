@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MangaCardHorizontal } from '@/components/home/MangaCardHorizontal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { api, HistoryItem } from '@/services/api';
+import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CategoryScreen() {
@@ -83,13 +83,10 @@ export default function CategoryScreen() {
         case 'continue-reading':
           if (userId && token) {
             try {
-              const history = await api.getHistory(userId, token);
-              let historyArray: HistoryItem[] = [];
-              if (Array.isArray(history)) {
-                historyArray = history;
-              } else if (history && typeof history === 'object') {
-                historyArray = (history as any).history || (history as any).data || [];
-              }
+              const historyResponse = await api.getHistory(userId, token);
+              const alreadyRead = historyResponse?.alreadyRead?.items || [];
+              const toRead = historyResponse?.toRead?.items || [];
+              const historyArray = [...alreadyRead, ...toRead];
               data = historyArray.filter(item => item.progress && item.progress > 0);
             } catch (err) {
               console.warn('Erreur continue reading:', err);
@@ -118,6 +115,34 @@ export default function CategoryScreen() {
     setRefreshing(false);
   };
 
+  const handleAddToRead = async (item: any) => {
+    if (!userId || !token) {
+      console.warn('Utilisateur non connecte: impossible d\'ajouter a la liste a lire');
+      return;
+    }
+
+    const mangaId = String(item?.mangaId || item?.id || '');
+    if (!mangaId) {
+      console.warn('Impossible d\'ajouter a la liste a lire: mangaId manquant');
+      return;
+    }
+
+    try {
+      await api.addToHistory(
+        userId,
+        {
+          mangaId,
+          title: item?.title || 'Titre inconnu',
+          cover: item?.cover,
+          status: 'planned',
+        },
+        token
+      );
+    } catch {
+      await api.updateHistory(userId, mangaId, { status: 'planned' }, token);
+    }
+  };
+
   const cardWidth = Math.max(96, (width - 32 - 16) / 3);
   const cardHeight = Math.round(cardWidth * 1.55);
 
@@ -136,7 +161,7 @@ export default function CategoryScreen() {
           cardHeight={cardHeight}
           containerStyle={styles.cardContainer}
           onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: mangaId } })}
-          onBookmarkPress={() => console.log('Bookmark pressed:', item.title)}
+          onBookmarkPress={() => handleAddToRead(item)}
         />
       </View>
     );

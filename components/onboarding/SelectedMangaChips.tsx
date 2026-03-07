@@ -2,7 +2,7 @@ import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
-  items: Array<{ id: string; title: string }>;
+  items: Array<{ id: string; title: string; cover?: string }>;
   onRemove: (mangaId: string) => void;
 };
 

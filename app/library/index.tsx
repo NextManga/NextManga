@@ -3,17 +3,18 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MangaCardHorizontal } from '@/components/home/MangaCardHorizontal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { api, HistoryItem } from '@/services/api';
@@ -26,6 +27,7 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { userId, token } = useAuth();
+  const { width } = useWindowDimensions();
 
   const [activeTab, setActiveTab] = useState<TabType>('toRead');
   const [loading, setLoading] = useState(true);
@@ -40,16 +42,10 @@ export default function LibraryScreen() {
 
     try {
       setLoading(true);
-      const response = await api.getHistory(userId, token);
-      
-      // Extraire le tableau de la réponse
-      let historyArray: HistoryItem[] = [];
-      if (Array.isArray(response)) {
-        historyArray = response;
-      } else if (response && typeof response === 'object') {
-        historyArray = (response as any).history || (response as any).data || [];
-      }
-      
+      const historyResponse = await api.getHistory(userId, token);
+      const alreadyRead = historyResponse?.alreadyRead?.items || [];
+      const toRead = historyResponse?.toRead?.items || [];
+      const historyArray: HistoryItem[] = [...alreadyRead, ...toRead];
       setLibraryItems(historyArray);
     } catch (error) {
       console.error('Erreur chargement bibliothèque:', error);
@@ -69,6 +65,30 @@ export default function LibraryScreen() {
     setRefreshing(false);
   };
 
+  const handleAddToRead = async (item: HistoryItem) => {
+    if (!userId || !token) {
+      console.warn('Utilisateur non connecte: impossible d\'ajouter a la liste a lire');
+      return;
+    }
+
+    try {
+      await api.addToHistory(
+        userId,
+        {
+          mangaId: item.mangaId,
+          title: item.title,
+          cover: item.cover,
+          status: 'planned',
+        },
+        token
+      );
+    } catch {
+      await api.updateHistory(userId, item.mangaId, { status: 'planned' }, token);
+    }
+
+    await loadLibrary();
+  };
+
   // Filtrer les mangas par catégorie
   const toReadMangas = (libraryItems || []).filter((item) =>
     ['planned', 'reading', 'paused'].includes(item.status)
@@ -76,64 +96,25 @@ export default function LibraryScreen() {
   const completedMangas = (libraryItems || []).filter((item) => item.status === 'completed');
 
   const currentList = activeTab === 'toRead' ? toReadMangas : completedMangas;
+  const cardWidth = Math.max(96, (width - 32 - 16) / 3);
+  const cardHeight = Math.round(cardWidth * 1.55);
 
   const renderMangaCard = ({ item }: { item: HistoryItem }) => {
     return (
-      <Pressable
-        style={[styles.card, { backgroundColor: colors.surfacePrimary }]}
-        onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
-      >
-        <View style={styles.coverContainer}>
-          {item.cover ? (
-            <Image
-              source={{ uri: item.cover }}
-              style={styles.cover}
-              onError={(error) => console.log('❌ Image load error:', error.nativeEvent)}
-            />
-          ) : (
-            <View style={[styles.cover, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
-              <Ionicons name="image-outline" size={40} color={colors.textTertiary} />
-            </View>
-          )}
-        </View>
-        <View style={styles.cardContent}>
-          <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
-            {item.title}
-          </Text>
-
-          {item.rating && item.rating > 0 && (
-            <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={14} color="#FBBF24" />
-              <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
-                {item.rating.toFixed(1)}
-              </Text>
-            </View>
-          )}
-
-          {item.progress !== undefined && item.totalChapters && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarBackground}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      backgroundColor: colors.primary,
-                      width: `${(item.progress / 100) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.progressText, { color: colors.textTertiary }]}>
-                {item.currentChapter || 0}/{item.totalChapters}
-              </Text>
-            </View>
-          )}
-
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Text style={styles.statusText}>{getStatusLabel(item.status, t)}</Text>
-          </View>
-        </View>
-      </Pressable>
+      <View style={styles.cardWrapper}>
+        <MangaCardHorizontal
+          title={item.title}
+          cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+          rating={item.rating}
+          badge={getStatusLabel(item.status, t)}
+          badgeColor={getStatusColor(item.status)}
+          cardWidth={cardWidth}
+          cardHeight={cardHeight}
+          containerStyle={styles.cardContainer}
+          onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
+          onBookmarkPress={() => handleAddToRead(item)}
+        />
+      </View>
     );
   };
 
@@ -197,7 +178,7 @@ export default function LibraryScreen() {
           renderItem={renderMangaCard}
           keyExtractor={(item) => item.mangaId}
           contentContainerStyle={styles.listContent}
-          numColumns={2}
+          numColumns={3}
           columnWrapperStyle={styles.row}
           ListEmptyComponent={renderEmptyState}
           refreshControl={
@@ -291,74 +272,14 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  card: {
-    width: '48%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  coverContainer: {
-    width: '100%',
-    height: 200,
-  },
-  cover: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  cardContent: {
-    padding: 12,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
+  cardWrapper: {
+    width: '32%',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  ratingText: {
-    fontSize: 12,
-    marginLeft: 4,
-    fontWeight: '600',
-  },
-  progressContainer: {
-    marginBottom: 8,
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    marginBottom: 4,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+  cardContainer: {
+    marginRight: 0,
   },
   emptyContainer: {
     flex: 1,

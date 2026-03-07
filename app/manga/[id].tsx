@@ -15,7 +15,6 @@ import { MangaGenresSection } from '@/components/manga-detail/MangaGenresSection
 import { MangaHeroSection } from '@/components/manga-detail/MangaHeroSection';
 import { MangaInformationCard } from '@/components/manga-detail/MangaInformationCard';
 import { MangaRatingCard } from '@/components/manga-detail/MangaRatingCard';
-import { MangaRecommendations } from '@/components/manga-detail/MangaRecommendations';
 import { MangaSynopsisSection } from '@/components/manga-detail/MangaSynopsisSection';
 import { MangaTitleInfo } from '@/components/manga-detail/MangaTitleInfo';
 
@@ -139,6 +138,27 @@ export default function MangaDetailScreen() {
     loadMangaDetail();
   };
 
+  const addMangaToToRead = async (mangaItem: MangaDetail) => {
+    if (!userId || !token) {
+      return;
+    }
+
+    try {
+      await api.addToHistory(
+        userId,
+        {
+          mangaId: mangaItem.id,
+          title: mangaItem.title,
+          cover: mangaItem.coverImage,
+          status: 'planned',
+        },
+        token
+      );
+    } catch {
+      await api.updateHistory(userId, mangaItem.id, { status: 'planned' }, token);
+    }
+  };
+
   const handleToggleFavorite = async () => {
     if (!token || !manga) {
       Alert.alert('Erreur', 'Vous devez être connecté pour utiliser cette fonctionnalité');
@@ -146,7 +166,6 @@ export default function MangaDetailScreen() {
     }
 
     try {
-      const previousState = isFavorite;
       setIsFavorite(!isFavorite);
 
       const response = await api.toggleFavorite(
@@ -159,6 +178,8 @@ export default function MangaDetailScreen() {
       );
 
       console.log('Toggle favorite response:', response);
+
+      await addMangaToToRead(manga);
       
       // Mise à jour avec la réponse du serveur
       if (response.isFavorite !== undefined) {
@@ -180,14 +201,12 @@ export default function MangaDetailScreen() {
     try {
       if (isInLibrary) {
         // Supprimer de la bibliothèque
-        const previousState = isInLibrary;
         setIsInLibrary(false);
 
         const response = await api.removeFromLibrary(manga.id, token);
         console.log('Remove from library response:', response);
       } else {
         // Ajouter à la bibliothèque
-        const previousState = isInLibrary;
         setIsInLibrary(true);
 
         const response = await api.addToLibrary(
@@ -202,6 +221,7 @@ export default function MangaDetailScreen() {
         );
 
         console.log('Add to library response:', response);
+        await addMangaToToRead(manga);
       }
     } catch (error: any) {
       console.error('Erreur toggle library:', error);

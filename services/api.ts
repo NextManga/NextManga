@@ -78,13 +78,38 @@ export interface HistoryItem {
   mangaId: string;
   title: string;
   cover?: string;
-  status: 'planned' | 'reading' | 'completed' | 'paused';
+  status: 'planned' | 'reading' | 'completed' | 'paused' | 'dropped';
   rating?: number;
   progress?: number;
   currentChapter?: number;
   totalChapters?: number;
   lastReadAt?: string;
   tags?: string[];
+}
+
+export interface HistoryResponse {
+  success: boolean;
+  count: number;
+  history: HistoryItem[];
+  alreadyRead: {
+    count: number;
+    items: HistoryItem[];
+  };
+  toRead: {
+    count: number;
+    items: HistoryItem[];
+  };
+}
+
+export interface AddHistoryPayload {
+  mangaId: string;
+  status: 'planned' | 'reading' | 'completed' | 'dropped';
+  title?: string;
+  cover?: string;
+  rating?: number;
+  progress?: number;
+  currentChapter?: number;
+  totalChapters?: number;
 }
 
 export interface RecommendationItem {
@@ -498,20 +523,28 @@ export const api = {
     }
   },
 
-  getHistory: async (userId: string, token: string): Promise<HistoryItem[]> => {
-    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history`, token);
+  getHistory: async (userId: string, token: string): Promise<HistoryResponse> => {
+    return api.authenticatedGet<HistoryResponse>(`/api/users/${userId}/history`, token);
+  },
+
+  getHistoryToRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
+    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history/to-read`, token);
+  },
+
+  getHistoryAlreadyRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
+    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history/already-read`, token);
   },
 
   getRecommendations: async (userId: string, token: string): Promise<RecommendationItem[]> => {
     return api.authenticatedGet<RecommendationItem[]>(`/api/recommendations/history`, token);
   },
 
-  addToHistory: async (userId: string, data: any, token: string): Promise<any> => {
-    return api.authenticatedPost<any>(`/api/users/${userId}/history`, data, token);
+  addToHistory: async (userId: string, payload: AddHistoryPayload, token: string): Promise<HistoryItem> => {
+    return api.authenticatedPost<HistoryItem>(`/api/users/${userId}/history`, payload, token);
   },
 
-  updateHistory: async (userId: string, mangaId: string, data: any, token: string): Promise<any> => {
-    return api.authenticatedPut<any>(`/api/users/${userId}/history/${mangaId}`, data, token);
+  updateHistory: async (userId: string, mangaId: string, payload: Partial<AddHistoryPayload>, token: string): Promise<HistoryItem> => {
+    return api.authenticatedPut<HistoryItem>(`/api/users/${userId}/history/${mangaId}`, payload, token);
   },
 
   // Upload avatar
@@ -621,13 +654,26 @@ export const api = {
   // ✅ GET Trending mangas
   getTrendingMangas: async (limit: number = 20): Promise<RecommendationItem[]> => {
     try {
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-      });
-      console.log(`🔵 GET Request: ${API_URL}/api/manga/trending?${params.toString()}`);
-      const res = await fetch(`${API_URL}/api/manga/trending?${params.toString()}`);
-      console.log(`📊 Response Status: ${res.status}`);
+      const fetchTrending = async (requestLimit: number) => {
+        const params = new URLSearchParams({
+          limit: requestLimit.toString(),
+        });
+        const url = `${API_URL}/api/manga/trending?${params.toString()}`;
+        console.log(`🔵 GET Request: ${url}`);
+        const res = await fetch(url);
+        console.log(`📊 Response Status: ${res.status}`);
+        return res;
+      };
+
+      let res = await fetchTrending(limit);
+
+      if (!res.ok && limit > 10) {
+        console.warn(`⚠️ Trending limit=${limit} non supporté, fallback vers limit=10`);
+        res = await fetchTrending(10);
+      }
+
       if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+
       const response = await res.json();
       console.log(`📦 Trending Response - Success:`, response.success, `Count:`, response.count);
       
