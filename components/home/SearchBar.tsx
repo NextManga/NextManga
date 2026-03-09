@@ -1,4 +1,6 @@
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -12,20 +14,24 @@ export const SearchBar = ({
   value, 
   onChangeText, 
   onFilterPress,
-  placeholder = "Rechercher un manga..." 
+  placeholder
 }: Props) => {
+  const { t } = useTranslation();
+  const colors = useThemeColors();
+  const resolvedPlaceholder = placeholder ?? t('ui.search.placeholder');
+
   return (
-    <View style={styles.container}>
-      <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+    <View style={[styles.container, { backgroundColor: colors.surfaceSecondary }]}>
+      <Ionicons name="search" size={20} color={colors.textTertiary} style={styles.searchIcon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        style={styles.input}
+        placeholder={resolvedPlaceholder}
+        placeholderTextColor={colors.textTertiary}
+        style={[styles.input, { color: colors.textPrimary }]}
       />
       <TouchableOpacity onPress={onFilterPress} style={styles.filterButton}>
-        <Ionicons name="options-outline" size={20} color="#6B7280" />
+        <Ionicons name="options-outline" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -34,7 +40,6 @@ export const SearchBar = ({
 const styles = StyleSheet.create({
   container: {
     height: 48,
-    backgroundColor: '#F3F4F6',
     borderRadius: 24,
     marginHorizontal: 16,
     marginVertical: 12,
@@ -48,7 +53,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
   },
   filterButton: {
     width: 32,

@@ -1,5 +1,6 @@
 import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -9,11 +10,13 @@ type Props = {
 };
 
 export const MangaSearchBar = ({ value, onChange, onClear }: Props) => {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={18} color="#9CA3AF" />
       <TextInput
-        placeholder="Rechercher un manga..."
+        placeholder={t('ui.onboarding.mangas.searchPlaceholder')}
         placeholderTextColor={colors.gray400}
         style={styles.input}
         value={value}

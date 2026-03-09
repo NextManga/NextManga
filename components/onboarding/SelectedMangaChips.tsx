@@ -2,8 +2,8 @@ import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
-  items: string[];
-  onRemove: (title: string) => void;
+  items: Array<{ id: string; title: string; cover?: string }>;
+  onRemove: (mangaId: string) => void;
 };
 
 export const SelectedMangaChips = ({ items, onRemove }: Props) => {
@@ -15,10 +15,10 @@ export const SelectedMangaChips = ({ items, onRemove }: Props) => {
       showsHorizontalScrollIndicator={false}
       style={styles.container}
     >
-      {items.map((title) => (
-        <View key={title} style={styles.chip}>
-          <Text style={styles.text}>{title}</Text>
-          <TouchableOpacity onPress={() => onRemove(title)}>
+      {items.map((item) => (
+        <View key={item.id} style={styles.chip}>
+          <Text style={styles.text}>{item.title}</Text>
+          <TouchableOpacity onPress={() => onRemove(item.id)}>
             <Text style={styles.close}>×</Text>
           </TouchableOpacity>
         </View>

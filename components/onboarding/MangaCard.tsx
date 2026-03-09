@@ -7,9 +7,27 @@ type Props = {
   cover: string;
   selected: boolean;
   onPress: () => void;
+  rating?: number;
 };
 
-export const MangaCard = ({ title, cover, selected, onPress }: Props) => {
+const renderStars = (rating: number) => {
+  const stars = [];
+  const fullStars = Math.floor(rating / 2); // Convertir /10 à /5
+  const hasHalfStar = (rating % 2) >= 1;
+  
+  for (let i = 0; i < 5; i++) {
+    if (i < fullStars) {
+      stars.push('star');
+    } else if (i === fullStars && hasHalfStar) {
+      stars.push('star-half');
+    } else {
+      stars.push('star-outline');
+    }
+  }
+  return stars;
+};
+
+export const MangaCard = ({ title, cover, selected, onPress, rating = 0 }: Props) => {
   return (
     <Pressable
       onPress={onPress}
@@ -22,6 +40,22 @@ export const MangaCard = ({ title, cover, selected, onPress }: Props) => {
           colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.gradient}
         >
+          {rating > 0 && (
+            <View style={styles.ratingContainer}>
+              <View style={styles.starsContainer}>
+                {renderStars(rating).map((starType, idx) => (
+                  <Ionicons
+                    key={idx}
+                    name={starType as any}
+                    size={12}
+                    color="#FBBF24"
+                    style={styles.star}
+                  />
+                ))}
+              </View>
+              <Text style={styles.ratingText}>{(rating / 2).toFixed(1)}</Text>
+            </View>
+          )}
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
@@ -99,5 +133,22 @@ const styles = StyleSheet.create({
   },
   selectedIcon: {
     backgroundColor: '#6366F1',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 4,
+  },
+  star: {
+    marginRight: 2,
+  },
+  ratingText: {
+    color: '#FBBF24',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

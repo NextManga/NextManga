@@ -2,15 +2,18 @@ import { AuthFooter } from '@/components/auth/AuthFooter';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
 import { AppLogo } from '@/components/ui/AppLogo';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { api } from '@/services/api';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SignInScreen() {
     const { setAuth, setUser } = useAuth();
+    const colors = useThemeColors();
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,11 +21,11 @@ export default function SignInScreen() {
 
     const handleLogin = async () => {
         if (!email.trim() || !email.includes('@')) {
-            setError('Veuillez entrer une adresse email valide');
+            setError(t('ui.auth.signIn.invalidEmail'));
             return;
         }
         if (password.length < 6) {
-            setError('Le mot de passe doit contenir au moins 6 caractères');
+            setError(t('ui.auth.signIn.invalidPassword'));
             return;
         }
 
@@ -42,7 +45,7 @@ export default function SignInScreen() {
                 console.log('✅ Login Success - userId:', userId);
 
                 if (!userId) {
-                  throw new Error('Impossible de récupérer l\'ID utilisateur');
+                                    throw new Error(t('ui.auth.signIn.missingUserId'));
                 }
 
                 // Sauvegarder userId et token
@@ -64,12 +67,12 @@ export default function SignInScreen() {
 
                 router.replace('/(tabs)');
             } else {
-                throw new Error('Réponse invalide du serveur');
+                throw new Error(t('ui.auth.signIn.invalidServerResponse'));
             }
         } catch (err: any) {
-            const message = err?.message || 'Erreur lors de la connexion';
+            const message = err?.message || t('ui.auth.signIn.loginError');
             setError(message);
-            Alert.alert('Erreur', message);
+            Alert.alert(t('common.errorTitle'), message);
         } finally {
             setIsSubmitting(false);
         }
@@ -79,40 +82,40 @@ export default function SignInScreen() {
         <>
             <AppLogo />
 
-            <View style={styles.card}>
-                <Text style={styles.title}>Connexion</Text>
-                <Text style={styles.subtitle}>Bon retour parmi nous !</Text>
+            <View style={[styles.card, { backgroundColor: colors.surfacePrimary }]}>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>{t('ui.auth.signIn.title')}</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('ui.auth.signIn.subtitle')}</Text>
 
                 <AppInput
-                    placeholder="Adresse email"
+                    placeholder={t('ui.auth.signIn.emailPlaceholder')}
                     value={email}
                     onChangeText={setEmail}
                 />
                 <AppInput
-                    placeholder="Mot de passe"
+                    placeholder={t('ui.auth.signIn.passwordPlaceholder')}
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
                 />
 
                 {error && (
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
                 )}
 
                 <TouchableOpacity>
-                    <Text style={styles.forgot}>Mot de passe oublié ?</Text>
+                    <Text style={[styles.forgot, { color: colors.primary }]}>{t('ui.auth.signIn.forgotPassword')}</Text>
                 </TouchableOpacity>
 
                 <AppButton
-                    title={isSubmitting ? 'Connexion...' : 'Se connecter'}
+                    title={isSubmitting ? t('ui.auth.signIn.submitting') : t('ui.auth.signIn.submit')}
                     onPress={handleLogin}
                     disabled={isSubmitting}
                 />
 
                 <View style={styles.footer}>
                     <AuthFooter
-                        question="Pas encore de compte ?"
-                        actionText="S'inscrire"
+                        question={t('ui.auth.signIn.noAccount')}
+                        actionText={t('ui.auth.signIn.signUpAction')}
                         onPress={() => router.push('/sign_up')}
                     />
                 </View>
@@ -124,7 +127,6 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
     card: {
         flex: 1,
-        backgroundColor: colors.white,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         padding: 24,
@@ -135,11 +137,9 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     subtitle: {
-        color: colors.textSecondary,
         marginBottom: 25,
     },
     forgot: {
-        color: colors.primary,
         textAlign: 'right',
         marginBottom: 20,
     },
@@ -149,7 +149,6 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     errorText: {
-        color: '#EF4444',
         fontSize: 14,
         marginBottom: 12,
         fontWeight: '500',

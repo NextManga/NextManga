@@ -1,4 +1,4 @@
-import { colors } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -6,7 +6,7 @@ interface MangaTitleInfoProps {
   title: string;
   author: string;
   status: 'reading' | 'completed' | 'paused' | 'planned' | 'dropped';
-  chapters: number;
+  // chapters: number;
   year: number;
 }
 
@@ -48,37 +48,38 @@ export const MangaTitleInfo: React.FC<MangaTitleInfoProps> = ({
   title,
   author,
   status,
-  chapters,
+  // chapters,
   year,
 }) => {
+  const colors = useThemeColors();
   const statusColor = getStatusColor(status);
   const statusLabel = getStatusLabel(status);
 
   return (
     <View style={styles.container}>
       {/* Title */}
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
 
       {/* Author */}
-      <View style={styles.authorRow}>
+      {/* <View style={styles.authorRow}>
         <Text style={styles.authorIcon}>👤</Text>
-        <Text style={styles.authorText}>Par {author}</Text>
-      </View>
+        <Text style={[styles.authorText, { color: colors.primary }]}>Par {author}</Text>
+      </View> */}
 
       {/* Status & Stats Row */}
       <View style={styles.statsRow}>
-        <View style={styles.statusBadge}>
+        <View style={[styles.statusBadge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={styles.statusText}>{statusLabel}</Text>
+          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
         </View>
 
-        <Text style={styles.separator}>•</Text>
+        {/* <Text style={[styles.separator, { color: colors.border }]}>•</Text> */}
 
-        <Text style={styles.stat}>{chapters.toLocaleString()} chapitres</Text>
+        {/* <Text style={[styles.stat, { color: colors.textSecondary }]}>{chapters.toLocaleString()} chapitres</Text> */}
 
-        <Text style={styles.separator}>•</Text>
+        <Text style={[styles.separator, { color: colors.border }]}>•</Text>
 
-        <Text style={styles.stat}>{year}</Text>
+        <Text style={[styles.stat, { color: colors.textSecondary }]}>{year}</Text>
       </View>
     </View>
   );
@@ -92,7 +93,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 8,
   },
   authorRow: {
@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
   },
   authorText: {
     fontSize: 14,
-    color: colors.primary,
     fontWeight: '500',
   },
   statsRow: {
@@ -118,12 +117,10 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDFB',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
   },
   statusDot: {
     width: 8,
@@ -134,14 +131,11 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10B981',
   },
   separator: {
     fontSize: 14,
-    color: '#D1D5DB',
   },
   stat: {
     fontSize: 14,
-    color: '#6B7280',
   },
 });

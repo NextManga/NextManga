@@ -4,14 +4,17 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppCheckbox } from "@/components/ui/AppCheckbox";
 import { AppInput } from "@/components/ui/AppInput";
 import { AppLogo } from "@/components/ui/AppLogo";
-import { colors } from "@/constants/theme";
 import { useSignUpForm } from "@/contexts/SignUpContext";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import { router } from "expo-router";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function SignUpScreen() {
     const { formData, error, updateFormData } = useSignUpForm();
+    const colors = useThemeColors();
+    const { t } = useTranslation();
     const [accepted, setAccepted] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState('');
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -23,50 +26,59 @@ export default function SignUpScreen() {
     const handleNext = () => {
         // Validation
         if (!formData.displayName.trim()) {
-            setValidationError("Le nom d'utilisateur est requis");
+            setValidationError(t('ui.auth.signUp.displayNameRequired'));
             return;
         }
-        if (!formData.email.trim() || !formData.email.includes('@')) {
-            setValidationError("Veuillez entrer une adresse email valide");
+        
+        // Email validation avec regex plus stricte
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!formData.email.trim() || !emailRegex.test(formData.email.trim())) {
+            setValidationError(t('ui.auth.signUp.invalidEmail'));
             return;
         }
+        
         if (formData.password.length < 6) {
-            setValidationError("Le mot de passe doit contenir au moins 6 caractères");
+            setValidationError(t('ui.auth.signUp.passwordMin'));
             return;
         }
         if (formData.password !== confirmPassword) {
-            setValidationError("Les mots de passe ne correspondent pas");
+            setValidationError(t('ui.auth.signUp.passwordMismatch'));
             return;
         }
         if (!accepted) {
-            setValidationError("Vous devez accepter les conditions d'utilisation");
+            setValidationError(t('ui.auth.signUp.mustAcceptTerms'));
             return;
         }
 
         setValidationError(null);
+        console.log('✅ Données d\'inscription validées et sauvegardées:', {
+            displayName: formData.displayName,
+            email: formData.email,
+            password: '***'
+        });
         router.push('/(onboarding)/genres');
     };
 
     return (
         <>
             <AppLogo />
-            <View style={styles.card}>
-                <Text style={styles.title}>Inscription</Text>
-                <Text style={styles.subtitle}>Rejoignez la communauté !</Text>
+            <View style={[styles.card, { backgroundColor: colors.surfacePrimary }]}>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>{t('ui.auth.signUp.title')}</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('ui.auth.signUp.subtitle')}</Text>
 
                 <AppInput
-                    placeholder="Nom d'utilisateur"
+                    placeholder={t('ui.auth.signUp.displayNamePlaceholder')}
                     onChangeText={(text) => updateFormData({ displayName: text })}
                     value={formData.displayName}
                 />
                 <AppInput
-                    placeholder="Adresse email"
+                    placeholder={t('ui.auth.signUp.emailPlaceholder')}
                     onChangeText={(text) => updateFormData({ email: text })}
                     value={formData.email}
                 />
 
                 <AppInput
-                    placeholder="Mot de passe"
+                    placeholder={t('ui.auth.signUp.passwordPlaceholder')}
                     secureTextEntry
                     onChangeText={(text) => updateFormData({ password: text })}
                     value={formData.password}
@@ -74,31 +86,35 @@ export default function SignUpScreen() {
                 <PasswordStrength level={passwordLevel} />
 
                 <AppInput
-                    placeholder="Confirmer le mot de passe"
+                    placeholder={t('ui.auth.signUp.confirmPasswordPlaceholder')}
                     secureTextEntry
                     onChangeText={setConfirmPassword}
                     value={confirmPassword}
                 />
 
                 {validationError && (
-                    <Text style={styles.errorText}>{validationError}</Text>
+                    <Text style={[styles.errorText, { color: colors.error }]}>{validationError}</Text>
                 )}
 
                 <AppCheckbox
                     checked={accepted}
                     onToggle={() => setAccepted(!accepted)}
                     label={
-                        <>
-                            J'accepte les{' '}
-                            <Text style={styles.link}>Conditions d'utilisation</Text> et la{' '}
-                            <Text style={styles.link}>Politique de confidentialité</Text>
-                        </>
+                        <Text style={{ color: colors.textSecondary }}>
+                            <Trans
+                                i18nKey="ui.auth.signUp.acceptTerms"
+                                components={{
+                                    terms: <Text style={[styles.link, { color: colors.primary }]} />,
+                                    privacy: <Text style={[styles.link, { color: colors.primary }]} />,
+                                }}
+                            />
+                        </Text>
                     }
                 />
-                <AppButton title="Créer mon compte" onPress={handleNext} />
+                <AppButton title={t('ui.auth.signUp.submit')} onPress={handleNext} />
                 <AuthFooter
-                    question="Déjà inscrit ?"
-                    actionText="Se connecter"
+                    question={t('ui.auth.signUp.haveAccount')}
+                    actionText={t('ui.auth.signUp.signInAction')}
                     onPress={() => router.push('/sign_in')}
                 />
             </View>
@@ -109,7 +125,6 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
     card: {
         flex: 1,
-        backgroundColor: colors.white,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         padding: 24,
@@ -120,11 +135,9 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     subtitle: {
-        color: colors.textSecondary,
         marginBottom: 25,
     },
     forgot: {
-        color: colors.primary,
         textAlign: 'right',
         marginBottom: 20,
     },
@@ -134,11 +147,9 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     link: {
-        color: colors.primary,
         fontWeight: '600',
     },
     errorText: {
-        color: '#EF4444',
         fontSize: 14,
         marginBottom: 12,
         fontWeight: '500',

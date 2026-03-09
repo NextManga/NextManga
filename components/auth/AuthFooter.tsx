@@ -1,5 +1,6 @@
 // src/components/auth/AuthFooter.tsx
-import { colors, spacing, typography } from '@/constants/theme';
+import { spacing, typography } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Props = {
@@ -9,11 +10,13 @@ type Props = {
 };
 
 export const AuthFooter = ({ question, actionText, onPress }: Props) => {
+  const colors = useThemeColors();
+  
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>{question}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>{question}</Text>
       <TouchableOpacity onPress={onPress}>
-      <Text style={styles.link}>{actionText}</Text>
+      <Text style={[styles.link, { color: colors.primary }]}>{actionText}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -28,11 +31,9 @@ const styles = StyleSheet.create({
   },
   text: {
     textAlign: 'center',
-    color: colors.textSecondary,
     marginInlineEnd: 5,
   },
   link: {
-    color: colors.primary,
     fontWeight: typography.fontWeight.semiBold,
   },
 });

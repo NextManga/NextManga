@@ -18,10 +18,44 @@ const mapToRecommendationItem = (item: any): RecommendationItem => {
   };
 };
 
+const extractFavoriteGenres = (payload: any): string[] => {
+  if (Array.isArray(payload)) {
+    return payload.filter((genre) => typeof genre === 'string');
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const candidates = [
+    payload.genres,
+    payload.favoriteGenres,
+    payload.data,
+    payload.data?.genres,
+    payload.data?.favoriteGenres,
+    payload.items,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((genre) => typeof genre === 'string');
+    }
+  }
+
+  return [];
+};
+
+const unwrapApiData = <T>(payload: any): T => {
+  return (payload?.data ?? payload) as T;
+};
+
 export interface CreateUserPayload {
   email: string;
   password: string;
   displayName: string;
+  preferences?: {
+    targetAudience?: string;
+  };
 }
 
 export interface LoginPayload {
@@ -47,13 +81,47 @@ export interface UserProfile {
 export interface HistoryItem {
   mangaId: string;
   title: string;
+  coverImage?: string;
   cover?: string;
-  status: 'planned' | 'reading' | 'completed' | 'paused';
+  status: 'planned' | 'reading' | 'completed' | 'paused' | 'dropped';
   rating?: number;
   progress?: number;
   currentChapter?: number;
   totalChapters?: number;
   lastReadAt?: string;
+  tags?: string[];
+}
+
+export interface HistoryResponse {
+  success: boolean;
+  count: number;
+  history: HistoryItem[];
+  alreadyRead: {
+    count: number;
+    items: HistoryItem[];
+  };
+  toRead: {
+    count: number;
+    items: HistoryItem[];
+  };
+}
+
+export interface HistoryQueryOptions {
+  limit?: number;
+  status?: 'planned' | 'reading' | 'completed' | 'paused' | 'dropped';
+  enriched?: boolean;
+}
+
+export interface AddHistoryPayload {
+  mangaId: string | number;
+  status: 'planned' | 'reading' | 'completed' | 'dropped';
+  title?: string;
+  cover?: string;
+  coverImage?: string;
+  rating?: number;
+  progress?: number;
+  currentChapter?: number;
+  totalChapters?: number;
   tags?: string[];
 }
 
@@ -142,6 +210,7 @@ export interface LibraryStatus {
 export interface AddToLibraryPayload {
   mangaId: string;
   title: string;
+  coverImage?: string;
   status: 'planned' | 'reading' | 'completed' | 'dropped';
   rating?: number | null;
   progress?: number;
@@ -308,8 +377,71 @@ export const api = {
     }
   },
 
-  createUser: async (payload: CreateUserPayload): Promise<UserProfile> => {
-    return api.post<UserProfile>('/api/users', payload);
+  authenticatedPut: async <T = any>(endpoint: string, body: any, token: string): Promise<T> => {
+    try {
+      console.log(`🟡 PUT Request (Auth): ${API_URL}${endpoint}`);
+      console.log('📤 Request Body:', JSON.stringify(body, null, 2));
+
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response Text:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
+        const errorMessage = errorData?.message || errorData?.error || `Erreur API (${res.status})`;
+        console.log('❌ Error Message:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      console.log('✅ Response Success:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ PUT Request Failed:', error);
+      throw error;
+    }
+  },
+
+  createUser: async (payload: CreateUserPayload): Promise<LoginResponse> => {
+    try {
+      return await api.post<LoginResponse>('/api/users', payload);
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const needsPreferenceFallback =
+        message.includes('preferences.targetAudience') ||
+        message.includes('Preferences must be an object') ||
+        message.includes('User validation failed');
+
+      if (!needsPreferenceFallback) {
+        throw error;
+      }
+
+      const fallbackPayload: CreateUserPayload = {
+        ...payload,
+        preferences: {
+          targetAudience: payload.preferences?.targetAudience || 'all',
+        },
+      };
+
+      console.log('🔁 Retry createUser with preferences fallback');
+      return api.post<LoginResponse>('/api/users', fallbackPayload);
+    }
   },
 
   login: async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -374,20 +506,164 @@ export const api = {
     return api.authenticatedGet<UserProfile>(`/api/users/${userId}`, token);
   },
 
-  getHistory: async (userId: string, token: string): Promise<HistoryItem[]> => {
-    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history`, token);
+  updateUserPreferences: async (
+    userId: string,
+    preferences: {
+      themes?: string[];
+      genres?: string[];
+      moods?: string[];
+      targetAudience?: string;
+    },
+    token: string
+  ): Promise<UserProfile> => {
+    const endpoint = `/api/users/${userId}/preferences`;
+
+    try {
+      return await api.authenticatedPut<UserProfile>(
+        endpoint,
+        { preferences },
+        token
+      );
+    } catch (firstError) {
+      try {
+        return await api.authenticatedPut<UserProfile>(
+          endpoint,
+          preferences,
+          token
+        );
+      } catch {
+        throw firstError;
+      }
+    }
+  },
+
+  getHistory: async (userId: string, token: string, options?: HistoryQueryOptions): Promise<HistoryResponse> => {
+    const params = new URLSearchParams();
+    if (options?.limit !== undefined) params.set('limit', String(options.limit));
+    if (options?.status) params.set('status', options.status);
+    if (options?.enriched !== undefined) params.set('enriched', String(options.enriched));
+
+    const query = params.toString();
+    const endpoint = `/api/users/${userId}/history${query ? `?${query}` : ''}`;
+
+    const response = await api.authenticatedGet<any>(endpoint, token);
+    const data = unwrapApiData<any>(response);
+
+    return {
+      success: data?.success ?? true,
+      count: data?.count ?? 0,
+      history: Array.isArray(data?.history) ? data.history : [],
+      alreadyRead: {
+        count: data?.alreadyRead?.count ?? (Array.isArray(data?.alreadyRead?.items) ? data.alreadyRead.items.length : 0),
+        items: Array.isArray(data?.alreadyRead?.items) ? data.alreadyRead.items : [],
+      },
+      toRead: {
+        count: data?.toRead?.count ?? (Array.isArray(data?.toRead?.items) ? data.toRead.items.length : 0),
+        items: Array.isArray(data?.toRead?.items) ? data.toRead.items : [],
+      },
+    };
+  },
+
+  getHistoryToRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/history/to-read`, token);
+    const data = unwrapApiData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.toRead?.items)) return data.toRead.items;
+    return [];
+  },
+
+  getHistoryAlreadyRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/history/already-read`, token);
+    const data = unwrapApiData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.alreadyRead?.items)) return data.alreadyRead.items;
+    return [];
   },
 
   getRecommendations: async (userId: string, token: string): Promise<RecommendationItem[]> => {
     return api.authenticatedGet<RecommendationItem[]>(`/api/recommendations/history`, token);
   },
 
-  addToHistory: async (userId: string, data: any, token: string): Promise<any> => {
-    return api.authenticatedPost<any>(`/api/users/${userId}/history`, data, token);
+  addToHistory: async (userId: string, payload: AddHistoryPayload, token: string): Promise<HistoryItem> => {
+    return api.authenticatedPost<HistoryItem>(`/api/users/${userId}/history`, payload, token);
   },
 
-  updateHistory: async (userId: string, mangaId: string, data: any, token: string): Promise<any> => {
-    return api.authenticatedPost<any>(`/api/users/${userId}/history/${mangaId}`, data, token);
+  updateHistory: async (userId: string, mangaId: string, payload: Partial<AddHistoryPayload>, token: string): Promise<HistoryItem> => {
+    return api.authenticatedPut<HistoryItem>(`/api/users/${userId}/history/${mangaId}`, payload, token);
+  },
+
+  // Upload avatar
+  uploadAvatar: async (userId: string, imageUri: string, token: string): Promise<UserProfile> => {
+    try {
+      console.log(`🟣 POST Request (Upload Avatar): ${API_URL}/api/users/${userId}/avatar`);
+      
+      // Create FormData
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('avatar', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as any);
+
+      const res = await fetch(`${API_URL}/api/users/${userId}/avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response:', errorText);
+        throw new Error(`Erreur upload avatar (${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log('✅ Avatar uploaded:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ Upload Avatar Failed:', error);
+      throw error;
+    }
+  },
+
+  // Remove avatar
+  removeAvatar: async (userId: string, token: string): Promise<UserProfile> => {
+    try {
+      console.log(`🔴 DELETE Request: ${API_URL}/api/users/${userId}/avatar`);
+
+      const res = await fetch(`${API_URL}/api/users/${userId}/avatar`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log(`📊 Response Status: ${res.status}`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('❌ Error Response:', errorText);
+        throw new Error(`Erreur suppression avatar (${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log('✅ Avatar removed:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ Remove Avatar Failed:', error);
+      throw error;
+    }
   },
 
   // ============================================
@@ -423,12 +699,28 @@ export const api = {
   // ============================================
 
   // ✅ GET Trending mangas
-  getTrendingMangas: async (): Promise<RecommendationItem[]> => {
+  getTrendingMangas: async (limit: number = 20): Promise<RecommendationItem[]> => {
     try {
-      console.log(`🔵 GET Request: ${API_URL}/api/manga/trending`);
-      const res = await fetch(`${API_URL}/api/manga/trending`);
-      console.log(`📊 Response Status: ${res.status}`);
+      const fetchTrending = async (requestLimit: number) => {
+        const params = new URLSearchParams({
+          limit: requestLimit.toString(),
+        });
+        const url = `${API_URL}/api/manga/trending?${params.toString()}`;
+        console.log(`🔵 GET Request: ${url}`);
+        const res = await fetch(url);
+        console.log(`📊 Response Status: ${res.status}`);
+        return res;
+      };
+
+      let res = await fetchTrending(limit);
+
+      if (!res.ok && limit > 10) {
+        console.warn(`⚠️ Trending limit=${limit} non supporté, fallback vers limit=10`);
+        res = await fetchTrending(10);
+      }
+
       if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+
       const response = await res.json();
       console.log(`📦 Trending Response - Success:`, response.success, `Count:`, response.count);
       
@@ -548,4 +840,53 @@ export const api = {
       return [];
     }
   },
-};
+
+  // ✅ Gestion des genres favoris
+  getFavoriteGenres: async (userId: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/favorite-genres`, token);
+    return extractFavoriteGenres(response);
+  },
+
+  replaceFavoriteGenres: async (userId: string, genres: string[], token: string): Promise<string[]> => {
+    const endpoint = `/api/users/${userId}/favorite-genres`;
+
+    try {
+      const response = await api.authenticatedPut<any>(
+        endpoint,
+        { genres, favoriteGenres: genres },
+        token
+      );
+      return extractFavoriteGenres(response);
+    } catch (firstError) {
+      try {
+        const response = await api.authenticatedPut<any>(endpoint, genres, token);
+        return extractFavoriteGenres(response);
+      } catch {
+        throw firstError;
+      }
+    }
+  },
+
+  addFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedPost<any>(
+      `/api/users/${userId}/favorite-genres`,
+      { genre, genreId: genre },
+      token
+    );
+    return extractFavoriteGenres(response);
+  },
+
+  removeFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.delete<any>(`/api/users/${userId}/favorite-genres/${genre}`, token);
+    return extractFavoriteGenres(response);
+  },
+
+  toggleFavoriteGenre: async (userId: string, genre: string, token: string): Promise<string[]> => {
+    const response = await api.authenticatedPost<any>(
+      `/api/users/${userId}/favorite-genres/toggle`,
+      { genre, genreId: genre },
+      token
+    );
+    return extractFavoriteGenres(response);
+  },
+}

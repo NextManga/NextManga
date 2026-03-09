@@ -15,12 +15,11 @@ import { MangaGenresSection } from '@/components/manga-detail/MangaGenresSection
 import { MangaHeroSection } from '@/components/manga-detail/MangaHeroSection';
 import { MangaInformationCard } from '@/components/manga-detail/MangaInformationCard';
 import { MangaRatingCard } from '@/components/manga-detail/MangaRatingCard';
-import { MangaRecommendations } from '@/components/manga-detail/MangaRecommendations';
 import { MangaSynopsisSection } from '@/components/manga-detail/MangaSynopsisSection';
 import { MangaTitleInfo } from '@/components/manga-detail/MangaTitleInfo';
 
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { api } from '@/services/api';
 
 export interface MangaDetail {
@@ -49,6 +48,7 @@ export default function MangaDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { userId, token } = useAuth();
+  const colors = useThemeColors();
 
   const [manga, setManga] = useState<MangaDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,6 +138,27 @@ export default function MangaDetailScreen() {
     loadMangaDetail();
   };
 
+  const addMangaToToRead = async (mangaItem: MangaDetail) => {
+    if (!userId || !token) {
+      return;
+    }
+
+    try {
+      await api.addToHistory(
+        userId,
+        {
+          mangaId: mangaItem.id,
+          title: mangaItem.title,
+          coverImage: mangaItem.coverImage,
+          status: 'planned',
+        },
+        token
+      );
+    } catch {
+      await api.updateHistory(userId, mangaItem.id, { status: 'planned' }, token);
+    }
+  };
+
   const handleToggleFavorite = async () => {
     if (!token || !manga) {
       Alert.alert('Erreur', 'Vous devez être connecté pour utiliser cette fonctionnalité');
@@ -145,7 +166,6 @@ export default function MangaDetailScreen() {
     }
 
     try {
-      const previousState = isFavorite;
       setIsFavorite(!isFavorite);
 
       const response = await api.toggleFavorite(
@@ -158,6 +178,8 @@ export default function MangaDetailScreen() {
       );
 
       console.log('Toggle favorite response:', response);
+
+      await addMangaToToRead(manga);
       
       // Mise à jour avec la réponse du serveur
       if (response.isFavorite !== undefined) {
@@ -179,20 +201,19 @@ export default function MangaDetailScreen() {
     try {
       if (isInLibrary) {
         // Supprimer de la bibliothèque
-        const previousState = isInLibrary;
         setIsInLibrary(false);
 
         const response = await api.removeFromLibrary(manga.id, token);
         console.log('Remove from library response:', response);
       } else {
         // Ajouter à la bibliothèque
-        const previousState = isInLibrary;
         setIsInLibrary(true);
 
         const response = await api.addToLibrary(
           {
             mangaId: manga.id,
             title: manga.title,
+            coverImage: manga.coverImage,
             status: 'planned', // Par défaut "Prévu"
             rating: null,
             progress: 0,
@@ -201,6 +222,7 @@ export default function MangaDetailScreen() {
         );
 
         console.log('Add to library response:', response);
+        await addMangaToToRead(manga);
       }
     } catch (error: any) {
       console.error('Erreur toggle library:', error);
@@ -217,7 +239,7 @@ export default function MangaDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
@@ -226,11 +248,11 @@ export default function MangaDetailScreen() {
 
   if (!manga) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>Impossible de charger ce manga</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>Impossible de charger ce manga</Text>
         </View>
       </View>
     );
@@ -240,10 +262,10 @@ export default function MangaDetailScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.background }]}
         showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-    >
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      >
       <MangaHeroSection
         coverImage={manga.coverImage}
         onBackPress={() => router.back()}
@@ -256,7 +278,7 @@ export default function MangaDetailScreen() {
           title={manga.title}
           author={manga.author}
           status={manga.status}
-          chapters={manga.chapters}
+          // chapters={manga.chapters}
           year={manga.year}
         />
 
@@ -287,7 +309,7 @@ export default function MangaDetailScreen() {
           score={manga.score}
         />
 
-        <MangaRecommendations mangaId={manga.id} />
+        {/* <MangaRecommendations mangaId={manga.id} /> */}
 
         <View style={{ height: 100 }} />
       </View>
@@ -299,7 +321,6 @@ export default function MangaDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     paddingHorizontal: 24,
@@ -316,7 +337,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#6B7280',
     marginTop: 16,
     textAlign: 'center',
   },

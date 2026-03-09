@@ -1,11 +1,21 @@
 // src/components/ui/AppLogo.tsx
 import { borderRadius, colors, spacing, typography } from '@/constants/theme';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 export const AppLogo = () => {
   return (
     <View style={styles.container}>
-      <View style={styles.icon} />
+      {/* <Image 
+        source={require('@/assets/images/App_icon.png')} 
+        style={styles.icon}
+        resizeMode="cover"
+      /> */}
+      <Image
+      source={require('@/assets/images/logo.png')}
+      style={styles.icon}
+      resizeMode="cover"
+      />
+
       <Text style={styles.text}>NextManga</Text>
     </View>
   );
@@ -18,8 +28,8 @@ const styles = StyleSheet.create({
     marginTop: 65,
   },
   icon: {
-    width: 56,
-    height: 56,
+    width: 65,
+    height: 65,
     borderRadius: borderRadius.full,
     borderWidth: 2,
     borderColor: colors.white,

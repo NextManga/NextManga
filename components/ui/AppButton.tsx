@@ -1,5 +1,6 @@
 // src/components/ui/AppButton.tsx
-import { borderRadius, colors, dimensions, typography } from '@/constants/theme';
+import { borderRadius, dimensions, typography } from '@/constants/theme';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 
 type Props = {
@@ -12,17 +13,19 @@ type Props = {
 };
 
 export const AppButton = ({ title, onPress, disabled, variant = 'primary', style, textStyle }: Props) => {
+  const colors = useThemeColors();
+  
   const buttonStyle = [
     styles.button,
-    variant === 'outline' && styles.outlineButton,
-    variant === 'primary' && styles.primaryButton,
+    variant === 'outline' && [styles.outlineButton, { borderColor: colors.border }],
+    variant === 'primary' && { backgroundColor: colors.primary },
     style,
   ];
 
   const labelStyle = [
     styles.text,
-    variant === 'outline' && styles.outlineText,
-    variant === 'primary' && styles.primaryText,
+    variant === 'outline' && { color: colors.textPrimary },
+    variant === 'primary' && { color: '#FFFFFF' },
     textStyle,
   ];
 
@@ -41,21 +44,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 30,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-  },
   outlineButton: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: colors.gray300,
   },
   text: {
     fontWeight: typography.fontWeight.semiBold,
-  },
-  primaryText: {
-    color: colors.white,
-  },
-  outlineText: {
-    color: colors.gray700,
   },
 });
