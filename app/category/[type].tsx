@@ -87,7 +87,10 @@ export default function CategoryScreen() {
               const alreadyRead = historyResponse?.alreadyRead?.items || [];
               const toRead = historyResponse?.toRead?.items || [];
               const historyArray = [...alreadyRead, ...toRead];
-              data = historyArray.filter(item => item.progress && item.progress > 0);
+              data = historyArray.filter(item => item.progress && item.progress > 0).map(item => ({
+                ...item,
+                cover: item.coverImage || item.cover
+              }));
             } catch (err) {
               console.warn('Erreur continue reading:', err);
               data = [];
@@ -133,7 +136,7 @@ export default function CategoryScreen() {
         {
           mangaId,
           title: item?.title || 'Titre inconnu',
-          cover: item?.cover,
+          coverImage: item?.coverImage || item?.cover,
           status: 'planned',
         },
         token

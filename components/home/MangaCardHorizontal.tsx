@@ -1,10 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+
+const FALLBACK_COVER = 'https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx101517-H3TdM3g5ZUe9.jpg';
+
+const resolveCoverUri = (cover: unknown): string => {
+  if (typeof cover === 'string') {
+    const normalized = cover.trim();
+    if (!normalized) return FALLBACK_COVER;
+    if (normalized.startsWith('//')) return `https:${normalized}`;
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized;
+    return FALLBACK_COVER;
+  }
+
+  if (cover && typeof cover === 'object') {
+    const candidate = (cover as any).extraLarge || (cover as any).large || (cover as any).medium || (cover as any).url;
+    return resolveCoverUri(candidate);
+  }
+
+  return FALLBACK_COVER;
+};
 
 type Props = {
   title: string;
-  cover: string;
+  cover?: unknown;
   rating?: number;
   badge?: string;
   badgeColor?: string;
@@ -31,10 +51,21 @@ export const MangaCardHorizontal = ({
   cardHeight,
   containerStyle,
 }: Props) => {
+  const initialCoverUri = useMemo(() => resolveCoverUri(cover), [cover]);
+  const [imageUri, setImageUri] = useState(initialCoverUri);
+
+  useEffect(() => {
+    setImageUri(initialCoverUri);
+  }, [initialCoverUri]);
+
   return (
     <Pressable onPress={onPress} style={[styles.container, containerStyle]}>
       <View style={[styles.card, cardWidth ? { width: cardWidth } : null, cardHeight ? { height: cardHeight } : null]}>
-        <Image source={{ uri: cover }} style={styles.image} />
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.image}
+          onError={() => setImageUri(FALLBACK_COVER)}
+        />
         
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.9)']}

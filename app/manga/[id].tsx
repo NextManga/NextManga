@@ -1,13 +1,13 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 import { MangaActionButtons } from '@/components/manga-detail/MangaActionButtons';
@@ -149,7 +149,7 @@ export default function MangaDetailScreen() {
         {
           mangaId: mangaItem.id,
           title: mangaItem.title,
-          cover: mangaItem.coverImage,
+          coverImage: mangaItem.coverImage,
           status: 'planned',
         },
         token
@@ -213,6 +213,7 @@ export default function MangaDetailScreen() {
           {
             mangaId: manga.id,
             title: manga.title,
+            coverImage: manga.coverImage,
             status: 'planned', // Par défaut "Prévu"
             rating: null,
             progress: 0,

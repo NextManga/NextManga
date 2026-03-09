@@ -77,7 +77,7 @@ export default function LibraryScreen() {
         {
           mangaId: item.mangaId,
           title: item.title,
-          cover: item.cover,
+          coverImage: item.coverImage || item.cover,
           status: 'planned',
         },
         token
@@ -104,7 +104,7 @@ export default function LibraryScreen() {
       <View style={styles.cardWrapper}>
         <MangaCardHorizontal
           title={item.title}
-          cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+          cover={item.coverImage || item.cover}
           rating={item.rating}
           badge={getStatusLabel(item.status, t)}
           badgeColor={getStatusColor(item.status)}

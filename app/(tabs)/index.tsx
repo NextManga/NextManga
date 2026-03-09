@@ -117,7 +117,7 @@ export default function HomeScreen() {
           const formattedHistory = toRead.map((item: any) => ({
             id: item.mangaId,
             title: item.title,
-            cover: item.cover || 'https://via.placeholder.com/80x120',
+            cover: item.coverImage || item.cover || 'https://via.placeholder.com/80x120',
             currentChapter: item.currentChapter || item.progress || 0,
             totalChapters: item.totalChapters || 100,
           }));
@@ -169,7 +169,6 @@ export default function HomeScreen() {
       // Charger l'historique (bibliothèque)
       try {
         const historyResponse = await api.getHistory(userId, token);
-        console.log('📚 Raw history response:', historyResponse);
         
         let historyArray: HistoryItem[] = [];
         
@@ -197,8 +196,6 @@ export default function HomeScreen() {
           }
         }
         
-        console.log('📚 Processed library history:', historyArray.length, 'items');
-        console.log('📚 Library items:', historyArray);
         setLibraryHistory(historyArray);
       } catch (err) {
         console.warn('Impossible de charger la bibliothèque:', err);
@@ -231,7 +228,7 @@ export default function HomeScreen() {
     const payload = {
       mangaId,
       title: item?.title || 'Titre inconnu',
-      cover: item?.cover,
+      coverImage: item?.coverImage || item?.cover,
       status: 'planned' as const,
     };
 
@@ -317,7 +314,7 @@ export default function HomeScreen() {
                   renderItem={({ item }) => (
                     <MangaCardHorizontal
                       title={item.title}
-                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      cover={item.coverImage || item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
                       rating={item.rating}
                       onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
                       onBookmarkPress={() => handleAddToRead(item)}
@@ -344,7 +341,7 @@ export default function HomeScreen() {
                   renderItem={({ item }) => (
                     <MangaCardHorizontal
                       title={item.title}
-                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      cover={item.coverImage || item.cover}
                       rating={item.rating}
                       onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
                       onBookmarkPress={() => handleAddToRead(item)}
@@ -371,7 +368,7 @@ export default function HomeScreen() {
                   renderItem={({ item }) => (
                     <MangaCardHorizontal
                       title={item.title}
-                      cover={item.cover || 'https://via.placeholder.com/150x220?text=No+Image'}
+                      cover={item.coverImage || item.cover}
                       rating={item.rating}
                       onPress={() => router.push({ pathname: '/manga/[id]' as any, params: { id: item.mangaId } })}
                       onBookmarkPress={() => handleAddToRead(item)}

@@ -45,6 +45,10 @@ const extractFavoriteGenres = (payload: any): string[] => {
   return [];
 };
 
+const unwrapApiData = <T>(payload: any): T => {
+  return (payload?.data ?? payload) as T;
+};
+
 export interface CreateUserPayload {
   email: string;
   password: string;
@@ -77,6 +81,7 @@ export interface UserProfile {
 export interface HistoryItem {
   mangaId: string;
   title: string;
+  coverImage?: string;
   cover?: string;
   status: 'planned' | 'reading' | 'completed' | 'paused' | 'dropped';
   rating?: number;
@@ -101,15 +106,23 @@ export interface HistoryResponse {
   };
 }
 
+export interface HistoryQueryOptions {
+  limit?: number;
+  status?: 'planned' | 'reading' | 'completed' | 'paused' | 'dropped';
+  enriched?: boolean;
+}
+
 export interface AddHistoryPayload {
-  mangaId: string;
+  mangaId: string | number;
   status: 'planned' | 'reading' | 'completed' | 'dropped';
   title?: string;
   cover?: string;
+  coverImage?: string;
   rating?: number;
   progress?: number;
   currentChapter?: number;
   totalChapters?: number;
+  tags?: string[];
 }
 
 export interface RecommendationItem {
@@ -197,6 +210,7 @@ export interface LibraryStatus {
 export interface AddToLibraryPayload {
   mangaId: string;
   title: string;
+  coverImage?: string;
   status: 'planned' | 'reading' | 'completed' | 'dropped';
   rating?: number | null;
   progress?: number;
@@ -523,16 +537,49 @@ export const api = {
     }
   },
 
-  getHistory: async (userId: string, token: string): Promise<HistoryResponse> => {
-    return api.authenticatedGet<HistoryResponse>(`/api/users/${userId}/history`, token);
+  getHistory: async (userId: string, token: string, options?: HistoryQueryOptions): Promise<HistoryResponse> => {
+    const params = new URLSearchParams();
+    if (options?.limit !== undefined) params.set('limit', String(options.limit));
+    if (options?.status) params.set('status', options.status);
+    if (options?.enriched !== undefined) params.set('enriched', String(options.enriched));
+
+    const query = params.toString();
+    const endpoint = `/api/users/${userId}/history${query ? `?${query}` : ''}`;
+
+    const response = await api.authenticatedGet<any>(endpoint, token);
+    const data = unwrapApiData<any>(response);
+
+    return {
+      success: data?.success ?? true,
+      count: data?.count ?? 0,
+      history: Array.isArray(data?.history) ? data.history : [],
+      alreadyRead: {
+        count: data?.alreadyRead?.count ?? (Array.isArray(data?.alreadyRead?.items) ? data.alreadyRead.items.length : 0),
+        items: Array.isArray(data?.alreadyRead?.items) ? data.alreadyRead.items : [],
+      },
+      toRead: {
+        count: data?.toRead?.count ?? (Array.isArray(data?.toRead?.items) ? data.toRead.items.length : 0),
+        items: Array.isArray(data?.toRead?.items) ? data.toRead.items : [],
+      },
+    };
   },
 
   getHistoryToRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
-    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history/to-read`, token);
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/history/to-read`, token);
+    const data = unwrapApiData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.toRead?.items)) return data.toRead.items;
+    return [];
   },
 
   getHistoryAlreadyRead: async (userId: string, token: string): Promise<HistoryItem[]> => {
-    return api.authenticatedGet<HistoryItem[]>(`/api/users/${userId}/history/already-read`, token);
+    const response = await api.authenticatedGet<any>(`/api/users/${userId}/history/already-read`, token);
+    const data = unwrapApiData<any>(response);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.alreadyRead?.items)) return data.alreadyRead.items;
+    return [];
   },
 
   getRecommendations: async (userId: string, token: string): Promise<RecommendationItem[]> => {
